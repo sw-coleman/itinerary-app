@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  MapPin, BedDouble, Plane, Car, Utensils, Ticket, Plus, X, Settings,
+  MapPin, BedDouble, Plane, Car, Utensils, Ticket, Plus, Minus, X, Settings,
   ChevronDown, Trash2, Check, MoreHorizontal, Luggage, CalendarDays, StickyNote
 } from "lucide-react";
 
@@ -104,8 +104,11 @@ const STYLES = `
 .cell.ghost .ghost-date{font-family:var(--font-display);font-weight:600;font-size:15px;line-height:1;color:var(--ink-mute);opacity:.4;transition:.16s;}
 .cell.ghost:hover .ghost-date{opacity:.8;}
 
-.add-week{display:flex;align-items:center;gap:7px;margin:6px auto 0;padding:11px 18px;border-radius:12px;border:1.5px dashed var(--line);color:var(--ink-soft);font-weight:600;font-size:13.5px;transition:.15s;}
+.week-controls{display:flex;justify-content:center;gap:10px;margin-top:6px;}
+.add-week{display:flex;align-items:center;gap:7px;padding:11px 18px;border-radius:12px;border:1.5px dashed var(--line);color:var(--ink-soft);font-weight:600;font-size:13.5px;transition:.15s;}
 .add-week:hover{border-color:var(--primary);color:var(--primary-ink);background:var(--primary-soft);}
+.add-week:disabled{opacity:.4;cursor:default;}
+.add-week:disabled:hover{border-color:var(--line);color:var(--ink-soft);background:none;}
 .daycard{
   position:relative;height:100%;min-height:156px;background:var(--surface);
   border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px 13px 17px;
@@ -264,6 +267,7 @@ function buildMonths(startISO, endISO) {
     if (!m) { m = { key, year: d.date.getFullYear(), month: d.date.getMonth(), days: [] }; months.push(m); }
     m.days.push(d);
   }
+  const monthKeys = new Set(months.map((x) => x.key));
   for (const m of months) {
     const weeks = []; let week = new Array(7).fill(null); let prev = -1;
     for (const d of m.days) {
@@ -272,7 +276,11 @@ function buildMonths(startISO, endISO) {
       week[dow] = d; prev = dow;
     }
     weeks.push(week);
-    // pad the first/last week of the month with muted out-of-trip dates so every row is a full 7-day week
+    // pad the first/last week of the month so every row is a full 7-day week.
+    // A padding date that actually belongs to another month with its own
+    // section (e.g. Oct 31 from November's leading week, or Nov 1 from
+    // October's trailing week) is left blank instead of duplicated - that
+    // other section already renders it, either as a real day or its own ghost.
     for (const w of [weeks[0], weeks[weeks.length - 1]]) {
       const anchorIdx = w.findIndex((x) => x);
       const anchor = w[anchorIdx];
@@ -280,7 +288,10 @@ function buildMonths(startISO, endISO) {
         if (!w[i]) {
           const gd = new Date(anchor.date);
           gd.setDate(gd.getDate() + (i - anchorIdx));
-          w[i] = { iso: toISO(gd), dayNum: null, date: gd, inTrip: false };
+          const gdISO = toISO(gd);
+          const gdKey = `${gd.getFullYear()}-${gd.getMonth()}`;
+          const ownedElsewhere = gdKey !== m.key && monthKeys.has(gdKey);
+          w[i] = { iso: gdISO, dayNum: null, date: gd, inTrip: false, blank: ownedElsewhere };
         }
       }
     }
@@ -650,6 +661,14 @@ export default function App() {
     updateTrip({ ...trip, endDate: toISO(e) });
   };
 
+  const removeWeek = () => {
+    const s = parseISO(trip.startDate);
+    const e = parseISO(trip.endDate);
+    e.setDate(e.getDate() - 7);
+    if (e < s) return;
+    updateTrip({ ...trip, endDate: toISO(e) });
+  };
+
   const openGhost = (cell) => {
     let next = trip;
     if (cell.iso < trip.startDate) next = { ...trip, startDate: cell.iso };
@@ -737,6 +756,7 @@ export default function App() {
 
   const { months, total } = buildMonths(trip.startDate, trip.endDate);
   const todayISO = toISO(new Date());
+  const canRemoveWeek = total > 7;
 
   return (
     <div className="itin-root">
@@ -821,6 +841,8 @@ export default function App() {
                           isToday={cell.iso === todayISO}
                           onOpen={(c) => setOpenDay({ iso: c.iso, dayNum: c.dayNum })} />
                       </div>
+                    ) : cell.blank ? (
+                      <div className="cell" key={ci} />
                     ) : (
                       <button className="cell ghost" key={ci} onClick={() => openGhost(cell)}
                         title={`Add ${fmtShort(cell.iso)} to the trip`}>
@@ -834,7 +856,12 @@ export default function App() {
           </section>
         ))}
 
-        <button className="add-week" onClick={addWeek}><Plus size={15} /> Add week</button>
+        <div className="week-controls">
+          <button className="add-week" disabled={!canRemoveWeek} onClick={removeWeek} title={canRemoveWeek ? "Remove the last week" : "Trip is already 7 days or fewer"}>
+            <Minus size={15} /> Remove week
+          </button>
+          <button className="add-week" onClick={addWeek}><Plus size={15} /> Add week</button>
+        </div>
       </div>
 
       {openDay && (
