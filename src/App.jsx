@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   MapPin, BedDouble, Plane, Car, Utensils, Ticket, Plus, X, Settings,
-  ChevronDown, Trash2, Check, MoreHorizontal, Luggage, CalendarDays
+  ChevronDown, Trash2, Check, MoreHorizontal, Luggage, CalendarDays, StickyNote
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -119,6 +119,9 @@ const STYLES = `
 .dc-loc.placeholder svg{color:var(--ink-mute);}
 .dc-accom{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);}
 .dc-accom svg{flex:none;color:var(--green);}
+.dc-notes{display:flex;align-items:center;gap:5px;font-size:11.5px;font-style:italic;color:var(--ink-mute);}
+.dc-notes svg{flex:none;}
+.dc-notes .ctitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dc-chips{display:flex;flex-direction:column;gap:4px;margin-top:auto;}
 .chip{display:flex;align-items:center;gap:6px;font-size:11.5px;line-height:1.3;color:var(--ink-soft);}
 .chip .cdot{width:7px;height:7px;border-radius:2px;flex:none;}
@@ -441,7 +444,7 @@ function DayCard({ cellDay, data, isToday, onOpen }) {
   const sorted = [...items].sort((a, b) => (a.time || "~").localeCompare(b.time || "~"));
   const shown = sorted.slice(0, 2);
   const more = sorted.length - shown.length;
-  const filled = !!(data && (data.location || items.length || data.accommodation));
+  const filled = !!(data && (data.location || items.length || data.accommodation || data.notes));
   return (
     <button className={`daycard${filled ? " filled" : ""}${isToday ? " today" : ""}`} onClick={() => onOpen(cellDay)}>
       <div className="dc-head">
@@ -468,6 +471,9 @@ function DayCard({ cellDay, data, isToday, onOpen }) {
           ))}
           {more > 0 && <div className="chip-more">+{more} more</div>}
         </div>
+      )}
+      {data?.notes && (
+        <div className="dc-notes"><StickyNote size={11} /> <span className="ctitle">{data.notes}</span></div>
       )}
       <span className="dc-add"><Plus size={14} /></span>
     </button>
