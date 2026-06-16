@@ -283,34 +283,44 @@ async function sDel(key) {
 const K_INDEX = "itin:index";
 const K_TRIP = (id) => `itin:trip:${id}`;
 
-/* ---- sample seed ---- */
-function sampleTrip() {
-  const id = uid();
+/* ---- seed: real itinerary imported from the "Canada 27" Google Sheet ---- */
+const LEGACY_SEED_FINGERPRINT = "2027-09-27|2027-10-08";
+
+function sampleTrip(id = uid()) {
   return {
-    id, name: "Canada '27", startDate: "2027-09-27", endDate: "2027-10-08",
+    id, name: "Canada 27", startDate: "2026-10-29", endDate: "2026-11-18",
     days: {
-      "2027-09-27": { location: "Vancouver", accommodation: "Fairmont Pacific Rim", notes: "", items: [
-        { id: uid(), type: "flight", time: "11:30", title: "QF55 SYD → YVR", detail: "Confirmation X7K2QP · seat 42A" },
-        { id: uid(), type: "transport", time: "06:00", title: "Skybus to airport", detail: "" },
+      "2026-10-29": { location: "Vancouver", accommodation: "", notes: "", items: [
+        { id: uid(), type: "flight", time: "", title: "BNE → YVR", detail: "" },
       ]},
-      "2027-09-28": { location: "Vancouver", accommodation: "Fairmont Pacific Rim", notes: "Jet-lag day — keep it easy.", items: [
-        { id: uid(), type: "activity", time: "10:00", title: "Stanley Park bike loop", detail: "Rentals near Denman St" },
-        { id: uid(), type: "food", time: "19:30", title: "Dinner at Miku", detail: "Booked" },
+      "2026-10-30": { location: "Vancouver", accommodation: "", notes: "", items: [] },
+      "2026-10-31": { location: "Whitehorse", accommodation: "", notes: "", items: [
+        { id: uid(), type: "flight", time: "", title: "YVR → YXY", detail: "" },
       ]},
-      "2027-09-29": { location: "Vancouver → Banff", accommodation: "Overnight train", notes: "", items: [
-        { id: uid(), type: "activity", time: "09:00", title: "Granville Island market", detail: "" },
-        { id: uid(), type: "transport", time: "20:30", title: "Rocky Mountaineer dep.", detail: "" },
+      "2026-11-01": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
+      "2026-11-02": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
+      "2026-11-03": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
+      "2026-11-04": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
+      "2026-11-05": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
+      "2026-11-06": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
+      "2026-11-07": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
+      "2026-11-08": { location: "Vancouver", accommodation: "", notes: "", items: [
+        { id: uid(), type: "flight", time: "", title: "YXY → YVR", detail: "" },
       ]},
-      "2027-09-30": { location: "Banff", accommodation: "Moose Hotel & Suites", notes: "", items: [
-        { id: uid(), type: "activity", time: "14:00", title: "Banff Gondola", detail: "" },
+      "2026-11-09": { location: "Vancouver", accommodation: "", notes: "", items: [] },
+      "2026-11-10": { location: "Manila", accommodation: "", notes: "", items: [
+        { id: uid(), type: "flight", time: "", title: "YVR → MNL", detail: "" },
       ]},
-      "2027-10-01": { location: "Lake Louise", accommodation: "Moose Hotel & Suites", notes: "", items: [
-        { id: uid(), type: "activity", time: "08:00", title: "Lake Agnes Tea House hike", detail: "~7km return" },
+      "2026-11-11": { location: "Manila", accommodation: "", notes: "", items: [] },
+      "2026-11-12": { location: "Manila", accommodation: "", notes: "", items: [] },
+      "2026-11-13": { location: "Manila", accommodation: "", notes: "", items: [] },
+      "2026-11-14": { location: "", accommodation: "", notes: "", items: [
+        { id: uid(), type: "flight", time: "", title: "MNL → ???", detail: "" },
       ]},
-      "2027-10-02": { location: "Banff", accommodation: "Moose Hotel & Suites", notes: "", items: [] },
-      "2027-10-05": { location: "Calgary", accommodation: "", notes: "", items: [
-        { id: uid(), type: "transport", time: "10:00", title: "Drive Banff → Calgary", detail: "" },
-      ]},
+      "2026-11-15": { location: "", accommodation: "", notes: "", items: [] },
+      "2026-11-16": { location: "", accommodation: "", notes: "", items: [] },
+      "2026-11-17": { location: "", accommodation: "", notes: "", items: [] },
+      "2026-11-18": { location: "", accommodation: "", notes: "", items: [] },
     },
   };
 }
@@ -566,7 +576,13 @@ export default function App() {
       } else {
         setIndex(idx);
         const activeId = idx.activeId || idx.trips[0].id;
-        const t = await sGet(K_TRIP(activeId));
+        let t = await sGet(K_TRIP(activeId));
+        if (t && `${t.startDate}|${t.endDate}` === LEGACY_SEED_FINGERPRINT) {
+          t = sampleTrip(t.id);
+          await sSet(K_TRIP(t.id), t);
+          const fixedIdx = { ...idx, trips: idx.trips.map((x) => (x.id === t.id ? { ...x, name: t.name } : x)) };
+          setIndex(fixedIdx); await sSet(K_INDEX, fixedIdx);
+        }
         setTrip(t);
       }
       setLoading(false);
