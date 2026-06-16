@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-  base: "/itinerary-app/",
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/itinerary-app/" : "/",
   plugins: [react()],
-});
+}));

@@ -98,38 +98,40 @@ const STYLES = `
 .week-row{display:contents;}
 
 /* ---- day card ---- */
-.cell{min-height:118px;}
-.cell.ghost{padding:11px 12px 11px 15px;display:flex;justify-content:flex-end;}
-.cell.ghost .ghost-date{font-family:var(--font-display);font-weight:600;font-size:15px;line-height:1;color:var(--ink-mute);opacity:.4;}
+.cell{min-height:156px;}
+.cell.ghost{width:100%;height:100%;min-height:156px;padding:11px 12px 11px 15px;border-radius:var(--radius);display:flex;justify-content:flex-end;align-items:flex-start;text-align:left;transition:.16s ease;}
+.cell.ghost:hover{background:var(--surface-2);}
+.cell.ghost .ghost-date{font-family:var(--font-display);font-weight:600;font-size:15px;line-height:1;color:var(--ink-mute);opacity:.4;transition:.16s;}
+.cell.ghost:hover .ghost-date{opacity:.8;}
 
 .add-week{display:flex;align-items:center;gap:7px;margin:6px auto 0;padding:11px 18px;border-radius:12px;border:1.5px dashed var(--line);color:var(--ink-soft);font-weight:600;font-size:13.5px;transition:.15s;}
 .add-week:hover{border-color:var(--primary);color:var(--primary-ink);background:var(--primary-soft);}
 .daycard{
-  position:relative;height:100%;min-height:118px;background:var(--surface);
-  border:1px solid var(--line);border-radius:var(--radius);padding:11px 12px 11px 15px;
-  text-align:left;width:100%;transition:.16s ease;overflow:hidden;display:flex;flex-direction:column;gap:7px;
+  position:relative;height:100%;min-height:156px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px 13px 17px;
+  text-align:left;width:100%;transition:.16s ease;overflow:hidden;display:flex;flex-direction:column;gap:8px;
 }
 .daycard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line);transition:.16s;}
 .daycard.filled::before{background:var(--primary);}
 .daycard:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift);border-color:transparent;}
 .daycard.today{box-shadow:0 0 0 2px var(--primary);}
 .dc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;}
-.dc-date{font-family:var(--font-display);font-weight:600;font-size:19px;line-height:1;color:var(--ink);}
+.dc-date{font-family:var(--font-display);font-weight:600;font-size:22px;line-height:1;color:var(--ink);}
 .dc-dow{display:none;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute);}
-.dc-daynum{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--ink-mute);background:var(--surface-2);padding:2px 6px;border-radius:6px;}
-.dc-loc{display:flex;align-items:center;gap:5px;font-weight:600;font-size:14px;color:var(--ink);}
+.dc-daynum{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--ink-mute);background:var(--surface-2);padding:2px 6px;border-radius:6px;}
+.dc-loc{display:flex;align-items:center;gap:6px;font-weight:600;font-size:15px;color:var(--ink);}
 .dc-loc.placeholder{color:var(--ink-mute);font-weight:500;}
 .dc-loc svg{flex:none;color:var(--primary);}
 .dc-loc.placeholder svg{color:var(--ink-mute);}
-.dc-accom{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);}
+.dc-accom{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-soft);}
 .dc-accom svg{flex:none;color:var(--green);}
-.dc-notes{display:flex;align-items:center;gap:5px;font-size:11.5px;font-style:italic;color:var(--ink-mute);}
+.dc-notes{display:flex;align-items:center;gap:5px;font-size:12px;font-style:italic;color:var(--ink-mute);}
 .dc-notes svg{flex:none;}
 .dc-notes .ctitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.dc-chips{display:flex;flex-direction:column;gap:4px;margin-top:auto;}
-.chip{display:flex;align-items:center;gap:6px;font-size:11.5px;line-height:1.3;color:var(--ink-soft);}
+.dc-chips{display:flex;flex-direction:column;gap:6px;margin-top:auto;}
+.chip{display:flex;align-items:center;gap:6px;font-size:12.5px;line-height:1.3;color:var(--ink-soft);}
 .chip .cdot{width:7px;height:7px;border-radius:2px;flex:none;}
-.chip .ctime{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-mute);flex:none;}
+.chip .ctime{font-family:var(--font-mono);font-size:11.5px;font-weight:600;color:var(--ink-soft);flex:none;}
 .chip .ctitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .chip-more{font-size:11px;color:var(--ink-mute);font-weight:600;padding-left:13px;}
 .dc-add{opacity:0;position:absolute;right:9px;bottom:9px;width:24px;height:24px;border-radius:7px;background:var(--surface-2);display:grid;place-items:center;color:var(--ink-mute);transition:.14s;}
@@ -174,6 +176,9 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 .type-opt:hover{background:var(--surface-2);}
 .time-inp{width:84px;flex:none;text-align:center;font-family:var(--font-mono);font-size:13px;letter-spacing:-.02em;border:1px solid var(--line);border-radius:8px;padding:8px 6px;outline:none;background:var(--surface);}
 .time-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);}
+.flight-no-inp{width:84px;flex:none;text-align:center;text-transform:uppercase;font-family:var(--font-mono);font-size:13px;letter-spacing:.02em;border:1px solid var(--line);border-radius:8px;padding:8px 6px;outline:none;background:var(--surface);}
+.flight-no-inp::placeholder{text-transform:none;}
+.flight-no-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);}
 .item-title{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;font-weight:600;outline:none;background:var(--surface);}
 .item-title:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);}
 .item-detail{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:var(--surface);resize:vertical;min-height:34px;color:var(--ink-soft);}
@@ -382,6 +387,7 @@ function TypePicker({ value, onChange }) {
 }
 
 function ItemCard({ item, onChange, onDelete }) {
+  const isFlight = item.type === "flight";
   return (
     <div className="item-card" style={{ borderLeftColor: ITEM_TYPES[item.type].color }}>
       <button className="item-del" onClick={onDelete} title="Remove item"><Trash2 size={14} /></button>
@@ -389,8 +395,13 @@ function ItemCard({ item, onChange, onDelete }) {
         <TypePicker value={item.type} onChange={(t) => onChange({ ...item, type: t })} />
         <input className="time-inp" value={item.time} placeholder="09:30"
           onChange={(e) => onChange({ ...item, time: e.target.value })} />
+        {isFlight && (
+          <input className="flight-no-inp" value={item.flightNo || ""} placeholder="QF55"
+            onChange={(e) => onChange({ ...item, flightNo: e.target.value })} />
+        )}
       </div>
-      <input className="item-title" value={item.title} placeholder="What's happening?"
+      <input className="item-title" value={item.title}
+        placeholder={isFlight ? "Route, e.g. SYD → YVR" : "What's happening?"}
         onChange={(e) => onChange({ ...item, title: e.target.value })} style={{ marginBottom: 8 }} />
       <textarea className="item-detail" value={item.detail} placeholder="Notes, confirmation #, address…"
         onChange={(e) => onChange({ ...item, detail: e.target.value })} />
@@ -459,7 +470,7 @@ function DayCard({ cellDay, data, isToday, onOpen }) {
   const d = parseISO(cellDay.iso);
   const items = (data?.items || []).filter((i) => i.title || i.time);
   const sorted = [...items].sort((a, b) => (a.time || "~").localeCompare(b.time || "~"));
-  const shown = sorted.slice(0, 2);
+  const shown = sorted.slice(0, 3);
   const more = sorted.length - shown.length;
   const filled = !!(data && (data.location || items.length || data.accommodation || data.notes));
   return (
@@ -483,7 +494,10 @@ function DayCard({ cellDay, data, isToday, onOpen }) {
             <div className="chip" key={it.id}>
               <span className="cdot" style={{ background: ITEM_TYPES[it.type].color }} />
               {it.time && <span className="ctime">{it.time}</span>}
-              <span className="ctitle">{it.title || ITEM_TYPES[it.type].label}</span>
+              <span className="ctitle">
+                {it.type === "flight" && it.flightNo ? `${it.flightNo} · ` : ""}
+                {it.title || ITEM_TYPES[it.type].label}
+              </span>
             </div>
           ))}
           {more > 0 && <div className="chip-more">+{more} more</div>}
@@ -634,6 +648,15 @@ export default function App() {
     const e = parseISO(trip.endDate);
     e.setDate(e.getDate() + 7);
     updateTrip({ ...trip, endDate: toISO(e) });
+  };
+
+  const openGhost = (cell) => {
+    let next = trip;
+    if (cell.iso < trip.startDate) next = { ...trip, startDate: cell.iso };
+    else if (cell.iso > trip.endDate) next = { ...trip, endDate: cell.iso };
+    if (next !== trip) updateTrip(next);
+    const dayNum = Math.round((parseISO(cell.iso) - parseISO(next.startDate)) / 86400000) + 1;
+    setOpenDay({ iso: cell.iso, dayNum });
   };
 
   const updateDay = (iso, dayData) => {
@@ -799,9 +822,10 @@ export default function App() {
                           onOpen={(c) => setOpenDay({ iso: c.iso, dayNum: c.dayNum })} />
                       </div>
                     ) : (
-                      <div className="cell ghost" key={ci}>
+                      <button className="cell ghost" key={ci} onClick={() => openGhost(cell)}
+                        title={`Add ${fmtShort(cell.iso)} to the trip`}>
                         <span className="ghost-date">{cell.date.getDate()}</span>
-                      </div>
+                      </button>
                     )
                   ))}
                 </div>
