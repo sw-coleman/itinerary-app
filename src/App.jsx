@@ -45,7 +45,7 @@ const STYLES = `
   background:rgba(247,249,251,.82);
   border-bottom:1px solid var(--line);
 }
-.topbar-inner{max-width:1180px;margin:0 auto;padding:18px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.topbar-inner{max-width:1360px;margin:0 auto;padding:18px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
 .brand{display:flex;align-items:center;gap:11px;color:var(--ink-mute);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;}
 .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--ink);color:#fff;display:grid;place-items:center;}
 .title-block{flex:1;min-width:240px;}
@@ -83,45 +83,51 @@ const STYLES = `
 .menu-new{color:var(--primary-ink);font-weight:600;}
 
 /* ---- canvas ---- */
-.canvas{max-width:1180px;margin:0 auto;padding:30px 28px 120px;}
+.canvas{max-width:1360px;margin:0 auto;padding:30px 28px 100px;}
 
-.month-block{margin-bottom:38px;}
-.month-head{display:flex;align-items:baseline;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:1.5px solid var(--line);}
-.month-name{font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:-.01em;}
-.month-year{font-family:var(--font-mono);font-size:13px;color:var(--ink-mute);font-weight:500;}
-.month-len{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ink-mute);background:var(--surface);border:1px solid var(--line);padding:4px 10px;border-radius:99px;}
-
-.weekday-head{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:10px;}
+.weekday-head{display:grid;grid-template-columns:34px repeat(7,1fr);gap:12px;margin-bottom:10px;}
 .weekday-head span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);padding-left:4px;}
 
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
+.cal-grid{display:grid;grid-template-columns:34px repeat(7,1fr);gap:12px;}
 .week-row{display:contents;}
+.week-gutter{position:relative;}
+.remove-week-handle{
+  opacity:0;pointer-events:none;position:absolute;top:50%;left:0;transform:translateY(-50%);
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  color:var(--ink-mute);border:1px solid var(--line);background:var(--surface);transition:.15s;
+}
+.week-row:hover .remove-week-handle{opacity:1;pointer-events:auto;}
+.remove-week-handle:hover{color:var(--primary-ink);border-color:var(--primary);background:var(--primary-soft);}
+.week-row:hover .remove-week-handle:disabled{opacity:.35;cursor:default;}
+.remove-week-handle:disabled:hover{color:var(--ink-mute);border-color:var(--line);background:var(--surface);}
 
-/* ---- day card ---- */
-.cell{min-height:156px;}
-.cell.ghost{width:100%;height:100%;min-height:156px;padding:11px 12px 11px 15px;border-radius:var(--radius);display:flex;justify-content:flex-end;align-items:flex-start;text-align:left;transition:.16s ease;}
-.cell.ghost:hover{background:var(--surface-2);}
-.cell.ghost .ghost-date{font-family:var(--font-display);font-weight:600;font-size:15px;line-height:1;color:var(--ink-mute);opacity:.4;transition:.16s;}
-.cell.ghost:hover .ghost-date{opacity:.8;}
-
-.week-controls{display:flex;justify-content:center;gap:10px;margin-top:6px;}
+.add-week-row{display:flex;justify-content:center;margin-top:8px;}
 .add-week{display:flex;align-items:center;gap:7px;padding:11px 18px;border-radius:12px;border:1.5px dashed var(--line);color:var(--ink-soft);font-weight:600;font-size:13.5px;transition:.15s;}
 .add-week:hover{border-color:var(--primary);color:var(--primary-ink);background:var(--primary-soft);}
-.add-week:disabled{opacity:.4;cursor:default;}
-.add-week:disabled:hover{border-color:var(--line);color:var(--ink-soft);background:none;}
+
+/* ---- day card ---- */
+.cell{min-height:182px;}
+.cell.ghost{
+  width:100%;height:100%;min-height:182px;padding:13px 14px 13px 17px;border-radius:var(--radius);
+  display:flex;justify-content:flex-end;align-items:flex-start;text-align:left;transition:.16s ease;
+  background:var(--surface-2);border:1px dashed var(--line-soft);
+}
+.cell.ghost:hover{background:var(--primary-soft);border-color:var(--primary);}
+.cell.ghost .ghost-date{font-family:var(--font-display);font-weight:600;font-size:16px;line-height:1;color:var(--ink-mute);opacity:.6;transition:.16s;}
+.cell.ghost:hover .ghost-date{color:var(--primary-ink);opacity:1;}
 .daycard{
-  position:relative;height:100%;min-height:156px;background:var(--surface);
-  border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px 13px 17px;
-  text-align:left;width:100%;transition:.16s ease;overflow:hidden;display:flex;flex-direction:column;gap:8px;
+  position:relative;height:100%;min-height:182px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px 15px 19px;
+  text-align:left;width:100%;transition:.16s ease;overflow:hidden;display:flex;flex-direction:column;gap:9px;
 }
 .daycard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line);transition:.16s;}
 .daycard.filled::before{background:var(--primary);}
 .daycard:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift);border-color:transparent;}
 .daycard.today{box-shadow:0 0 0 2px var(--primary);}
 .dc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;}
-.dc-date{font-family:var(--font-display);font-weight:600;font-size:22px;line-height:1;color:var(--ink);}
+.dc-date{font-family:var(--font-display);font-weight:600;font-size:23px;line-height:1;color:var(--ink);}
 .dc-dow{display:none;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute);}
-.dc-daynum{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--ink-mute);background:var(--surface-2);padding:2px 6px;border-radius:6px;}
+.dc-month-tag{font-family:var(--font-mono);font-size:10.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--primary-ink);background:var(--primary-soft);padding:3px 7px;border-radius:6px;white-space:nowrap;}
 .dc-loc{display:flex;align-items:center;gap:6px;font-weight:600;font-size:15px;color:var(--ink);}
 .dc-loc.placeholder{color:var(--ink-mute);font-weight:500;}
 .dc-loc svg{flex:none;color:var(--primary);}
@@ -218,6 +224,7 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 @media (max-width:860px){
   .weekday-head{display:none;}
   .cal-grid{grid-template-columns:1fr;}
+  .week-gutter{display:none;}
   .cell.ghost{display:none;}
   .daycard{min-height:0;}
   .dc-dow{display:block;}
@@ -252,52 +259,46 @@ const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const fmtShort = (iso) => { const d = parseISO(iso); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`; };
 
-function buildMonths(startISO, endISO) {
-  if (!startISO || !endISO) return { months: [], total: 0 };
+// One continuous run of full Mon-Sun weeks covering the trip, padded with
+// out-of-trip "ghost" days at the very start/end so every row has 7 days.
+// Month changes are marked inline (see monthTag below) rather than by
+// splitting into separate per-month sections - that avoided full weeks
+// and caused the same date to appear twice near a month boundary.
+function buildCalendar(startISO, endISO) {
+  if (!startISO || !endISO) return { weeks: [], total: 0 };
   let s = parseISO(startISO), e = parseISO(endISO);
   if (e < s) { const t = s; s = e; e = t; }
-  const days = [];
+
+  const real = [];
   const cur = new Date(s);
   let idx = 1;
-  while (cur <= e) { days.push({ iso: toISO(cur), dayNum: idx, date: new Date(cur), inTrip: true }); cur.setDate(cur.getDate() + 1); idx++; }
-  const months = [];
-  for (const d of days) {
-    const key = `${d.date.getFullYear()}-${d.date.getMonth()}`;
-    let m = months.find((x) => x.key === key);
-    if (!m) { m = { key, year: d.date.getFullYear(), month: d.date.getMonth(), days: [] }; months.push(m); }
-    m.days.push(d);
+  while (cur <= e) { real.push({ iso: toISO(cur), dayNum: idx, date: new Date(cur), inTrip: true }); cur.setDate(cur.getDate() + 1); idx++; }
+  const total = real.length;
+
+  const leadGap = (real[0].date.getDay() + 6) % 7;
+  const lead = [];
+  for (let i = leadGap; i > 0; i--) {
+    const gd = new Date(real[0].date); gd.setDate(gd.getDate() - i);
+    lead.push({ iso: toISO(gd), dayNum: null, date: gd, inTrip: false });
   }
-  const monthKeys = new Set(months.map((x) => x.key));
-  for (const m of months) {
-    const weeks = []; let week = new Array(7).fill(null); let prev = -1;
-    for (const d of m.days) {
-      const dow = (d.date.getDay() + 6) % 7;
-      if (dow <= prev) { weeks.push(week); week = new Array(7).fill(null); }
-      week[dow] = d; prev = dow;
-    }
-    weeks.push(week);
-    // pad the first/last week of the month so every row is a full 7-day week.
-    // A padding date that actually belongs to another month with its own
-    // section (e.g. Oct 31 from November's leading week, or Nov 1 from
-    // October's trailing week) is left blank instead of duplicated - that
-    // other section already renders it, either as a real day or its own ghost.
-    for (const w of [weeks[0], weeks[weeks.length - 1]]) {
-      const anchorIdx = w.findIndex((x) => x);
-      const anchor = w[anchorIdx];
-      for (let i = 0; i < 7; i++) {
-        if (!w[i]) {
-          const gd = new Date(anchor.date);
-          gd.setDate(gd.getDate() + (i - anchorIdx));
-          const gdISO = toISO(gd);
-          const gdKey = `${gd.getFullYear()}-${gd.getMonth()}`;
-          const ownedElsewhere = gdKey !== m.key && monthKeys.has(gdKey);
-          w[i] = { iso: gdISO, dayNum: null, date: gd, inTrip: false, blank: ownedElsewhere };
-        }
-      }
-    }
-    m.weeks = weeks;
+
+  const lastDow = (real[real.length - 1].date.getDay() + 6) % 7;
+  const trailGap = 6 - lastDow;
+  const trail = [];
+  for (let i = 1; i <= trailGap; i++) {
+    const gd = new Date(real[real.length - 1].date); gd.setDate(gd.getDate() + i);
+    trail.push({ iso: toISO(gd), dayNum: null, date: gd, inTrip: false });
   }
-  return { months, total: days.length };
+
+  const all = [...lead, ...real, ...trail];
+  const weeks = [];
+  for (let i = 0; i < all.length; i += 7) weeks.push(all.slice(i, i + 7));
+  return { weeks, total };
+}
+
+function monthTag(cell, isFirstRealDay) {
+  if (!cell.inTrip || !(isFirstRealDay || cell.date.getDate() === 1)) return null;
+  return `${MONTHS[cell.date.getMonth()].slice(0, 3)} '${String(cell.date.getFullYear()).slice(2)}`;
 }
 
 /* ---- storage (localStorage) ---- */
@@ -477,7 +478,7 @@ function DayDrawer({ iso, dayNum, data, onClose, onUpdate }) {
   );
 }
 
-function DayCard({ cellDay, data, isToday, onOpen }) {
+function DayCard({ cellDay, data, isToday, tag, onOpen }) {
   const d = parseISO(cellDay.iso);
   const items = (data?.items || []).filter((i) => i.title || i.time);
   const sorted = [...items].sort((a, b) => (a.time || "~").localeCompare(b.time || "~"));
@@ -491,7 +492,7 @@ function DayCard({ cellDay, data, isToday, onOpen }) {
           <span className="dc-dow">{DOW[(d.getDay() + 6) % 7]}</span>{" "}
           <span className="dc-date">{d.getDate()}</span>
         </div>
-        <span className="dc-daynum">D{cellDay.dayNum}</span>
+        {tag && <span className="dc-month-tag">{tag}</span>}
       </div>
       {data?.location
         ? <div className="dc-loc"><MapPin size={13} /> <span className="ctitle">{data.location}</span></div>
@@ -754,7 +755,7 @@ export default function App() {
     );
   }
 
-  const { months, total } = buildMonths(trip.startDate, trip.endDate);
+  const { weeks, total } = buildCalendar(trip.startDate, trip.endDate);
   const todayISO = toISO(new Date());
   const canRemoveWeek = total > 7;
 
@@ -823,43 +824,44 @@ export default function App() {
           ))}
         </div>
 
-        {months.map((m) => (
-          <section className="month-block" key={m.key}>
-            <div className="month-head">
-              <span className="month-name">{MONTHS[m.month]}</span>
-              <span className="month-year">{m.year}</span>
-              <span className="month-len">{m.days.length} {m.days.length === 1 ? "day" : "days"}</span>
-            </div>
-            <div className="weekday-head">{DOW.map((d) => <span key={d}>{d}</span>)}</div>
-            <div className="cal-grid">
-              {m.weeks.map((week, wi) => (
-                <div className="week-row" key={wi}>
-                  {week.map((cell, ci) => (
-                    cell.inTrip ? (
-                      <div className="cell" key={ci}>
-                        <DayCard cellDay={cell} data={trip.days[cell.iso]}
-                          isToday={cell.iso === todayISO}
-                          onOpen={(c) => setOpenDay({ iso: c.iso, dayNum: c.dayNum })} />
-                      </div>
-                    ) : cell.blank ? (
-                      <div className="cell" key={ci} />
-                    ) : (
-                      <button className="cell ghost" key={ci} onClick={() => openGhost(cell)}
-                        title={`Add ${fmtShort(cell.iso)} to the trip`}>
-                        <span className="ghost-date">{cell.date.getDate()}</span>
-                      </button>
-                    )
-                  ))}
+        <div className="weekday-head">
+          <span />
+          {DOW.map((d) => <span key={d}>{d}</span>)}
+        </div>
+        <div className="cal-grid">
+          {weeks.map((week, wi) => {
+            const isLastRow = wi === weeks.length - 1;
+            return (
+              <div className="week-row" key={wi}>
+                <div className="week-gutter">
+                  {isLastRow && (
+                    <button className="remove-week-handle" disabled={!canRemoveWeek} onClick={removeWeek}
+                      title={canRemoveWeek ? "Remove this week" : "Trip is already 7 days or fewer"}>
+                      <Minus size={14} />
+                    </button>
+                  )}
                 </div>
-              ))}
-            </div>
-          </section>
-        ))}
+                {week.map((cell, ci) => (
+                  cell.inTrip ? (
+                    <div className="cell" key={ci}>
+                      <DayCard cellDay={cell} data={trip.days[cell.iso]}
+                        isToday={cell.iso === todayISO}
+                        tag={monthTag(cell, cell.iso === trip.startDate)}
+                        onOpen={(c) => setOpenDay({ iso: c.iso, dayNum: c.dayNum })} />
+                    </div>
+                  ) : (
+                    <button className="cell ghost" key={ci} onClick={() => openGhost(cell)}
+                      title={`Add ${fmtShort(cell.iso)} to the trip`}>
+                      <span className="ghost-date">{cell.date.getDate()}</span>
+                    </button>
+                  )
+                ))}
+              </div>
+            );
+          })}
+        </div>
 
-        <div className="week-controls">
-          <button className="add-week" disabled={!canRemoveWeek} onClick={removeWeek} title={canRemoveWeek ? "Remove the last week" : "Trip is already 7 days or fewer"}>
-            <Minus size={15} /> Remove week
-          </button>
+        <div className="add-week-row">
           <button className="add-week" onClick={addWeek}><Plus size={15} /> Add week</button>
         </div>
       </div>
