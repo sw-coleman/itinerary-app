@@ -45,7 +45,7 @@ const STYLES = `
   background:rgba(247,249,251,.82);
   border-bottom:1px solid var(--line);
 }
-.topbar-inner{max-width:1360px;margin:0 auto;padding:18px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.topbar-inner{max-width:1680px;margin:0 auto;padding:18px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
 .brand{display:flex;align-items:center;gap:11px;color:var(--ink-mute);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;}
 .brand-mark{width:30px;height:30px;border-radius:9px;background:var(--ink);color:#fff;display:grid;place-items:center;}
 .title-block{flex:1;min-width:240px;}
@@ -83,12 +83,17 @@ const STYLES = `
 .menu-new{color:var(--primary-ink);font-weight:600;}
 
 /* ---- canvas ---- */
-.canvas{max-width:1360px;margin:0 auto;padding:30px 28px 100px;}
+.canvas{max-width:1680px;margin:0 auto;padding:30px 28px 100px;}
 
-.weekday-head{display:grid;grid-template-columns:34px repeat(7,1fr);gap:12px;margin-bottom:10px;}
+/* day columns get a fixed minimum so they never resize based on typed
+   content (a bare 1fr track's "auto" minimum grows to fit unbreakable
+   text) - 210px comfortably fits a time (00:00), flight number (QF123)
+   and route (SRC > DST) on one line. Scrolls horizontally below that. */
+.cal-scroll{overflow-x:auto;padding-bottom:4px;}
+.weekday-head{display:grid;grid-template-columns:34px repeat(7,minmax(210px,1fr));gap:12px;margin-bottom:10px;}
 .weekday-head span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);padding-left:4px;}
 
-.cal-grid{display:grid;grid-template-columns:34px repeat(7,1fr);gap:12px;}
+.cal-grid{display:grid;grid-template-columns:34px repeat(7,minmax(210px,1fr));gap:12px;}
 .week-row{display:contents;}
 .week-gutter{position:relative;}
 .remove-week-handle{
@@ -824,41 +829,43 @@ export default function App() {
           ))}
         </div>
 
-        <div className="weekday-head">
-          <span />
-          {DOW.map((d) => <span key={d}>{d}</span>)}
-        </div>
-        <div className="cal-grid">
-          {weeks.map((week, wi) => {
-            const isLastRow = wi === weeks.length - 1;
-            return (
-              <div className="week-row" key={wi}>
-                <div className="week-gutter">
-                  {isLastRow && (
-                    <button className="remove-week-handle" disabled={!canRemoveWeek} onClick={removeWeek}
-                      title={canRemoveWeek ? "Remove this week" : "Trip is already 7 days or fewer"}>
-                      <Minus size={14} />
-                    </button>
-                  )}
+        <div className="cal-scroll">
+          <div className="weekday-head">
+            <span />
+            {DOW.map((d) => <span key={d}>{d}</span>)}
+          </div>
+          <div className="cal-grid">
+            {weeks.map((week, wi) => {
+              const isLastRow = wi === weeks.length - 1;
+              return (
+                <div className="week-row" key={wi}>
+                  <div className="week-gutter">
+                    {isLastRow && (
+                      <button className="remove-week-handle" disabled={!canRemoveWeek} onClick={removeWeek}
+                        title={canRemoveWeek ? "Remove this week" : "Trip is already 7 days or fewer"}>
+                        <Minus size={14} />
+                      </button>
+                    )}
+                  </div>
+                  {week.map((cell, ci) => (
+                    cell.inTrip ? (
+                      <div className="cell" key={ci}>
+                        <DayCard cellDay={cell} data={trip.days[cell.iso]}
+                          isToday={cell.iso === todayISO}
+                          tag={monthTag(cell, cell.iso === trip.startDate)}
+                          onOpen={(c) => setOpenDay({ iso: c.iso, dayNum: c.dayNum })} />
+                      </div>
+                    ) : (
+                      <button className="cell ghost" key={ci} onClick={() => openGhost(cell)}
+                        title={`Add ${fmtShort(cell.iso)} to the trip`}>
+                        <span className="ghost-date">{cell.date.getDate()}</span>
+                      </button>
+                    )
+                  ))}
                 </div>
-                {week.map((cell, ci) => (
-                  cell.inTrip ? (
-                    <div className="cell" key={ci}>
-                      <DayCard cellDay={cell} data={trip.days[cell.iso]}
-                        isToday={cell.iso === todayISO}
-                        tag={monthTag(cell, cell.iso === trip.startDate)}
-                        onOpen={(c) => setOpenDay({ iso: c.iso, dayNum: c.dayNum })} />
-                    </div>
-                  ) : (
-                    <button className="cell ghost" key={ci} onClick={() => openGhost(cell)}
-                      title={`Add ${fmtShort(cell.iso)} to the trip`}>
-                      <span className="ghost-date">{cell.date.getDate()}</span>
-                    </button>
-                  )
-                ))}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         <div className="add-week-row">
