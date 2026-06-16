@@ -99,7 +99,11 @@ const STYLES = `
 
 /* ---- day card ---- */
 .cell{min-height:118px;}
-.cell.empty{background:transparent;}
+.cell.ghost{padding:11px 12px 11px 15px;display:flex;justify-content:flex-end;}
+.cell.ghost .ghost-date{font-family:var(--font-display);font-weight:600;font-size:15px;line-height:1;color:var(--ink-mute);opacity:.4;}
+
+.add-week{display:flex;align-items:center;gap:7px;margin:6px auto 0;padding:11px 18px;border-radius:12px;border:1.5px dashed var(--line);color:var(--ink-soft);font-weight:600;font-size:13.5px;transition:.15s;}
+.add-week:hover{border-color:var(--primary);color:var(--primary-ink);background:var(--primary-soft);}
 .daycard{
   position:relative;height:100%;min-height:118px;background:var(--surface);
   border:1px solid var(--line);border-radius:var(--radius);padding:11px 12px 11px 15px;
@@ -206,7 +210,7 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 @media (max-width:860px){
   .weekday-head{display:none;}
   .cal-grid{grid-template-columns:1fr;}
-  .cell.empty{display:none;}
+  .cell.ghost{display:none;}
   .daycard{min-height:0;}
   .dc-dow{display:block;}
   .canvas{padding:22px 16px 100px;}
@@ -247,7 +251,7 @@ function buildMonths(startISO, endISO) {
   const days = [];
   const cur = new Date(s);
   let idx = 1;
-  while (cur <= e) { days.push({ iso: toISO(cur), dayNum: idx, date: new Date(cur) }); cur.setDate(cur.getDate() + 1); idx++; }
+  while (cur <= e) { days.push({ iso: toISO(cur), dayNum: idx, date: new Date(cur), inTrip: true }); cur.setDate(cur.getDate() + 1); idx++; }
   const months = [];
   for (const d of days) {
     const key = `${d.date.getFullYear()}-${d.date.getMonth()}`;
@@ -262,7 +266,20 @@ function buildMonths(startISO, endISO) {
       if (dow <= prev) { weeks.push(week); week = new Array(7).fill(null); }
       week[dow] = d; prev = dow;
     }
-    weeks.push(week); m.weeks = weeks;
+    weeks.push(week);
+    // pad the first/last week of the month with muted out-of-trip dates so every row is a full 7-day week
+    for (const w of [weeks[0], weeks[weeks.length - 1]]) {
+      const anchorIdx = w.findIndex((x) => x);
+      const anchor = w[anchorIdx];
+      for (let i = 0; i < 7; i++) {
+        if (!w[i]) {
+          const gd = new Date(anchor.date);
+          gd.setDate(gd.getDate() + (i - anchorIdx));
+          w[i] = { iso: toISO(gd), dayNum: null, date: gd, inTrip: false };
+        }
+      }
+    }
+    m.weeks = weeks;
   }
   return { months, total: days.length };
 }
@@ -613,6 +630,12 @@ export default function App() {
 
   const updateTrip = (next) => { setTrip(next); persistTrip(next); };
 
+  const addWeek = () => {
+    const e = parseISO(trip.endDate);
+    e.setDate(e.getDate() + 7);
+    updateTrip({ ...trip, endDate: toISO(e) });
+  };
+
   const updateDay = (iso, dayData) => {
     const days = { ...trip.days, [iso]: dayData };
     updateTrip({ ...trip, days });
@@ -769,19 +792,25 @@ export default function App() {
               {m.weeks.map((week, wi) => (
                 <div className="week-row" key={wi}>
                   {week.map((cell, ci) => (
-                    cell ? (
+                    cell.inTrip ? (
                       <div className="cell" key={ci}>
                         <DayCard cellDay={cell} data={trip.days[cell.iso]}
                           isToday={cell.iso === todayISO}
                           onOpen={(c) => setOpenDay({ iso: c.iso, dayNum: c.dayNum })} />
                       </div>
-                    ) : <div className="cell empty" key={ci} />
+                    ) : (
+                      <div className="cell ghost" key={ci}>
+                        <span className="ghost-date">{cell.date.getDate()}</span>
+                      </div>
+                    )
                   ))}
                 </div>
               ))}
             </div>
           </section>
         ))}
+
+        <button className="add-week" onClick={addWeek}><Plus size={15} /> Add week</button>
       </div>
 
       {openDay && (
