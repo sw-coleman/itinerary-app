@@ -226,8 +226,12 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 .legend-item{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
 .legend-item .ldot{width:9px;height:9px;border-radius:3px;}
 
+/* ---- bottom panels (checklist + expenses) ---- */
+.bottom-panels{display:flex;gap:16px;margin-top:32px;align-items:flex-start;}
+.bottom-panels > *{flex:1;min-width:0;}
+
 /* ---- todo checklist ---- */
-.todo-section{max-width:540px;margin:32px auto 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+.todo-section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
 .todo-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
 .todo-header-title{font-family:var(--font-display);font-weight:600;font-size:16px;}
 .todo-count{background:var(--primary-soft);color:var(--primary-ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;}
@@ -249,6 +253,42 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 .todo-add-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);display:grid;place-items:center;transition:.14s;flex:none;}
 .todo-add-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
 
+/* ---- expense tracker ---- */
+.expense-section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+.expense-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.expense-header-title{font-family:var(--font-display);font-weight:600;font-size:16px;}
+.expense-total-badge{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--ink);}
+.expense-list{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
+.expense-item{display:flex;align-items:center;gap:8px;padding:5px 5px;border-radius:7px;transition:.12s;}
+.expense-item:not(.expense-total-row):hover{background:var(--surface-2);}
+.expense-item:hover .expense-del{opacity:1;}
+.expense-dot{width:8px;height:8px;border-radius:3px;flex:none;}
+.expense-desc{flex:1;font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.expense-cat-label{font-size:11px;font-weight:600;color:var(--ink-mute);white-space:nowrap;flex:none;}
+.expense-amt{font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--ink-soft);white-space:nowrap;flex:none;}
+.expense-del{opacity:0;color:var(--ink-mute);width:20px;height:20px;border-radius:5px;display:grid;place-items:center;transition:.12s;flex:none;}
+.expense-del:hover{background:var(--primary-soft);color:var(--primary);}
+.expense-divider{height:1px;background:var(--line);margin:6px 0;}
+.expense-total-row .expense-amt{color:var(--ink);font-weight:700;}
+.expense-total-row .expense-desc{font-size:12.5px;font-weight:700;color:var(--ink-soft);}
+.expense-add-row{display:flex;gap:6px;align-items:center;}
+.expense-cat-pick{position:relative;flex:none;}
+.expense-cat-btn{display:flex;align-items:center;gap:4px;width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);justify-content:center;transition:.14s;}
+.expense-cat-btn:hover{border-color:var(--ink-mute);}
+.expense-cat-menu{position:absolute;bottom:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow-lift);padding:6px;z-index:10;min-width:140px;animation:pop .12s ease;}
+.expense-cat-opt{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;font-size:13px;font-weight:500;width:100%;text-align:left;transition:.1s;}
+.expense-cat-opt:hover{background:var(--surface-2);}
+.expense-desc-inp{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:13.5px;font-weight:500;outline:none;background:var(--surface-2);transition:.14s;}
+.expense-desc-inp::placeholder{color:var(--ink-mute);font-weight:400;}
+.expense-desc-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);background:var(--surface);}
+.expense-amt-wrap{position:relative;flex:none;width:90px;}
+.expense-currency{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:13px;color:var(--ink-mute);pointer-events:none;}
+.expense-amt-inp{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 8px 9px 20px;font-size:13px;font-family:var(--font-mono);outline:none;background:var(--surface-2);transition:.14s;}
+.expense-amt-inp::-webkit-outer-spin-button,.expense-amt-inp::-webkit-inner-spin-button{-webkit-appearance:none;}
+.expense-amt-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);background:var(--surface);}
+.expense-add-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);display:grid;place-items:center;transition:.14s;flex:none;}
+.expense-add-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+
 @media (max-width:860px){
   .weekday-head{display:none;}
   .cal-grid{grid-template-columns:1fr;}
@@ -258,6 +298,7 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
   .dc-dow{display:block;}
   .canvas{padding:22px 16px 100px;}
   .topbar-inner{padding:16px;}
+  .bottom-panels{flex-direction:column;}
 }
 @media (prefers-reduced-motion:reduce){
   .itin-root *{animation:none!important;transition:none!important;}
@@ -286,6 +327,17 @@ const toISO = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const fmtShort = (iso) => { const d = parseISO(iso); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`; };
+const fmtMoney = (n) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const EXPENSE_CATS = {
+  flight:    { label: "Flight",    color: "var(--sky)" },
+  stay:      { label: "Stay",      color: "var(--green)" },
+  food:      { label: "Food",      color: "var(--amber)" },
+  activity:  { label: "Activity",  color: "var(--primary)" },
+  transport: { label: "Transport", color: "var(--indigo)" },
+  other:     { label: "Other",     color: "var(--grey)" },
+};
+const EXPENSE_CAT_KEYS = Object.keys(EXPENSE_CATS);
 
 // One continuous run of full Mon-Sun weeks covering the trip, padded with
 // out-of-trip "ghost" days at the very start/end so every row has 7 days.
@@ -595,6 +647,89 @@ function TodoSection({ todos = [], onChange }) {
   );
 }
 
+function ExpenseSection({ expenses = [], onChange }) {
+  const [desc, setDesc] = useState("");
+  const [amount, setAmount] = useState("");
+  const [cat, setCat] = useState("other");
+  const [catOpen, setCatOpen] = useState(false);
+  const catRef = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => { if (catRef.current && !catRef.current.contains(e.target)) setCatOpen(false); };
+    document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const add = () => {
+    const text = desc.trim();
+    const amt = parseFloat(amount);
+    if (!text || isNaN(amt) || amt <= 0) return;
+    onChange([...expenses, { id: uid(), desc: text, amount: amt, cat }]);
+    setDesc(""); setAmount("");
+  };
+  const del = (id) => onChange(expenses.filter((e) => e.id !== id));
+
+  const total = expenses.reduce((s, e) => s + e.amount, 0);
+
+  return (
+    <div className="expense-section">
+      <div className="expense-header">
+        <span className="expense-header-title">Expenses</span>
+        {expenses.length > 0 && <span className="expense-total-badge">{fmtMoney(total)}</span>}
+      </div>
+
+      {expenses.length > 0 && (
+        <div className="expense-list">
+          {expenses.map((e) => (
+            <div key={e.id} className="expense-item">
+              <span className="expense-dot" style={{ background: EXPENSE_CATS[e.cat]?.color || "var(--grey)" }} />
+              <span className="expense-desc">{e.desc}</span>
+              <span className="expense-cat-label">{EXPENSE_CATS[e.cat]?.label}</span>
+              <span className="expense-amt">{fmtMoney(e.amount)}</span>
+              <button className="expense-del" onClick={() => del(e.id)} title="Remove"><X size={12} /></button>
+            </div>
+          ))}
+          <div className="expense-divider" />
+          <div className="expense-item expense-total-row">
+            <span className="expense-desc">Total</span>
+            <span className="expense-amt">{fmtMoney(total)}</span>
+            <span style={{ width: 20 }} />
+          </div>
+        </div>
+      )}
+
+      <div className="expense-add-row">
+        <div className="expense-cat-pick" ref={catRef}>
+          <button className="expense-cat-btn" onClick={() => setCatOpen((o) => !o)}
+            title={EXPENSE_CATS[cat].label}>
+            <span className="expense-dot" style={{ background: EXPENSE_CATS[cat].color }} />
+            <ChevronDown size={11} />
+          </button>
+          {catOpen && (
+            <div className="expense-cat-menu">
+              {EXPENSE_CAT_KEYS.map((k) => (
+                <button key={k} className="expense-cat-opt" onClick={() => { setCat(k); setCatOpen(false); }}>
+                  <span className="expense-dot" style={{ background: EXPENSE_CATS[k].color }} />
+                  {EXPENSE_CATS[k].label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <input className="expense-desc-inp" value={desc} placeholder="Description"
+          onChange={(e) => setDesc(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
+        <div className="expense-amt-wrap">
+          <span className="expense-currency">$</span>
+          <input className="expense-amt-inp" type="number" min="0" step="0.01" value={amount}
+            placeholder="0.00" onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
+        </div>
+        <button className="expense-add-btn" onClick={add} title="Add expense"><Plus size={14} /></button>
+      </div>
+    </div>
+  );
+}
+
 function SettingsModal({ trip, onSave, onDelete, onClose }) {
   const [name, setName] = useState(trip.name);
   const [start, setStart] = useState(trip.startDate);
@@ -752,6 +887,7 @@ export default function App() {
   };
 
   const updateTodos = (todos) => updateTrip({ ...trip, todos });
+  const updateExpenses = (expenses) => updateTrip({ ...trip, expenses });
 
   const updateDay = (iso, dayData) => {
     const days = { ...trip.days, [iso]: dayData };
@@ -941,7 +1077,10 @@ export default function App() {
           <button className="add-week" onClick={addWeek}><Plus size={15} /> Add week</button>
         </div>
 
-        <TodoSection todos={trip.todos || []} onChange={updateTodos} />
+        <div className="bottom-panels">
+          <TodoSection todos={trip.todos || []} onChange={updateTodos} />
+          <ExpenseSection expenses={trip.expenses || []} onChange={updateExpenses} />
+        </div>
       </div>
 
       {openDay && (
