@@ -226,6 +226,29 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 .legend-item{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
 .legend-item .ldot{width:9px;height:9px;border-radius:3px;}
 
+/* ---- todo checklist ---- */
+.todo-section{max-width:540px;margin:32px auto 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+.todo-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.todo-header-title{font-family:var(--font-display);font-weight:600;font-size:16px;}
+.todo-count{background:var(--primary-soft);color:var(--primary-ink);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.todo-list{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
+.todo-item{display:flex;align-items:center;gap:9px;padding:6px 5px;border-radius:8px;transition:.12s;}
+.todo-item:hover{background:var(--surface-2);}
+.todo-item:hover .todo-del{opacity:1;}
+.todo-check{width:20px;height:20px;border-radius:6px;border:2px solid var(--line);flex:none;display:grid;place-items:center;color:#fff;transition:.12s;background:var(--surface);}
+.todo-check:hover{border-color:var(--green);}
+.todo-item.done .todo-check{background:var(--green);border-color:var(--green);}
+.todo-text{flex:1;font-size:14px;font-weight:500;text-align:left;line-height:1.4;}
+.todo-item.done .todo-text{text-decoration:line-through;color:var(--ink-mute);}
+.todo-del{opacity:0;color:var(--ink-mute);width:20px;height:20px;border-radius:5px;display:grid;place-items:center;transition:.12s;flex:none;}
+.todo-del:hover{background:var(--primary-soft);color:var(--primary);}
+.todo-add-row{display:flex;gap:8px;align-items:center;}
+.todo-inp{flex:1;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13.5px;font-weight:500;outline:none;background:var(--surface-2);transition:.14s;}
+.todo-inp::placeholder{color:var(--ink-mute);font-weight:400;}
+.todo-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);background:var(--surface);}
+.todo-add-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);display:grid;place-items:center;transition:.14s;flex:none;}
+.todo-add-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+
 @media (max-width:860px){
   .weekday-head{display:none;}
   .cal-grid{grid-template-columns:1fr;}
@@ -528,6 +551,50 @@ function DayCard({ cellDay, data, isToday, tag, onOpen }) {
   );
 }
 
+function TodoSection({ todos = [], onChange }) {
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef(null);
+
+  const add = () => {
+    const text = draft.trim();
+    if (!text) return;
+    onChange([...todos, { id: uid(), text, done: false }]);
+    setDraft("");
+  };
+  const toggle = (id) => onChange(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  const del = (id) => onChange(todos.filter((t) => t.id !== id));
+
+  const pending = todos.filter((t) => !t.done).length;
+
+  return (
+    <div className="todo-section">
+      <div className="todo-header">
+        <span className="todo-header-title">Checklist</span>
+        {pending > 0 && <span className="todo-count">{pending}</span>}
+      </div>
+      {todos.length > 0 && (
+        <div className="todo-list">
+          {todos.map((t) => (
+            <div key={t.id} className={`todo-item${t.done ? " done" : ""}`}>
+              <button className="todo-check" onClick={() => toggle(t.id)} title={t.done ? "Mark incomplete" : "Mark done"}>
+                {t.done && <Check size={11} />}
+              </button>
+              <span className="todo-text">{t.text}</span>
+              <button className="todo-del" onClick={() => del(t.id)} title="Remove"><X size={12} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="todo-add-row">
+        <input ref={inputRef} className="todo-inp" value={draft} placeholder="Add a task…"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
+        <button className="todo-add-btn" onClick={add} title="Add task"><Plus size={14} /></button>
+      </div>
+    </div>
+  );
+}
+
 function SettingsModal({ trip, onSave, onDelete, onClose }) {
   const [name, setName] = useState(trip.name);
   const [start, setStart] = useState(trip.startDate);
@@ -683,6 +750,8 @@ export default function App() {
     const dayNum = Math.round((parseISO(cell.iso) - parseISO(next.startDate)) / 86400000) + 1;
     setOpenDay({ iso: cell.iso, dayNum });
   };
+
+  const updateTodos = (todos) => updateTrip({ ...trip, todos });
 
   const updateDay = (iso, dayData) => {
     const days = { ...trip.days, [iso]: dayData };
@@ -871,6 +940,8 @@ export default function App() {
         <div className="add-week-row">
           <button className="add-week" onClick={addWeek}><Plus size={15} /> Add week</button>
         </div>
+
+        <TodoSection todos={trip.todos || []} onChange={updateTodos} />
       </div>
 
       {openDay && (
