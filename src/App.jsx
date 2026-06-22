@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   MapPin, BedDouble, Plane, Car, Utensils, Ticket, Plus, Minus, X, Settings,
-  ChevronDown, Trash2, Check, MoreHorizontal, Luggage, CalendarDays, StickyNote
+  ChevronDown, Trash2, Check, MoreHorizontal, Luggage, CalendarDays, StickyNote, LogOut,
 } from "lucide-react";
+import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { auth, db, googleProvider } from "./firebase";
 
 /* ------------------------------------------------------------------ */
-/*  Design system                                                      */
+/*  Design tokens + global CSS                                         */
 /* ------------------------------------------------------------------ */
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -28,43 +31,55 @@ const STYLES = `
   --radius:16px; --radius-sm:10px;
   --shadow:0 1px 2px rgba(30,42,56,.04),0 8px 24px rgba(30,42,56,.06);
   --shadow-lift:0 8px 16px rgba(30,42,56,.08),0 20px 48px rgba(30,42,56,.12);
-
-  font-family:var(--font-body); color:var(--ink);
+  font-family:var(--font-body);color:var(--ink);
   min-height:100vh;
-  background:linear-gradient(168deg,var(--bg) 0%, var(--bg2) 100%);
+  background:linear-gradient(168deg,var(--bg) 0%,var(--bg2) 100%);
   -webkit-font-smoothing:antialiased;
 }
 .itin-root *{box-sizing:border-box;}
 .itin-root button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
 .itin-root input,.itin-root textarea,.itin-root select{font-family:inherit;color:var(--ink);}
 
+/* ---- sign-in screen ---- */
+.signin-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.signin-card{background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow-lift);padding:56px 48px 48px;max-width:420px;width:100%;text-align:center;}
+.signin-logo{width:72px;height:72px;border-radius:24px;background:var(--ink);color:#fff;display:grid;place-items:center;margin:0 auto 22px;box-shadow:0 8px 24px rgba(30,42,56,.18);}
+.signin-brand{font-family:var(--font-display);font-weight:700;font-size:40px;letter-spacing:-.025em;color:var(--ink);margin:0 0 8px;}
+.signin-tagline{color:var(--ink-soft);font-size:15.5px;font-weight:500;margin:0 0 40px;line-height:1.5;}
+.google-btn{display:flex;align-items:center;gap:12px;width:100%;padding:15px 22px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);font-weight:600;font-size:15px;justify-content:center;transition:.15s;color:var(--ink);}
+.google-btn:hover:not(:disabled){border-color:var(--ink-mute);background:var(--surface-2);transform:translateY(-1px);box-shadow:var(--shadow);}
+.google-btn:disabled{opacity:.6;cursor:default;}
+.signin-error{color:var(--primary-ink);font-size:13px;margin-top:14px;font-weight:500;}
+.signin-caption{margin-top:20px;font-size:12.5px;color:var(--ink-mute);line-height:1.55;}
+
+/* ---- loading screen ---- */
+.loading-screen{min-height:100vh;display:grid;place-items:center;}
+.loading-inner{text-align:center;}
+.loading-logo{width:60px;height:60px;border-radius:20px;background:var(--ink);color:#fff;display:grid;place-items:center;margin:0 auto 18px;opacity:.85;}
+.loading-text{color:var(--ink-mute);font-weight:600;font-size:14.5px;}
+
 /* ---- top bar ---- */
-.topbar{
-  position:sticky;top:0;z-index:30;
-  backdrop-filter:saturate(1.4) blur(10px);
-  background:rgba(247,249,251,.82);
-  border-bottom:1px solid var(--line);
-}
-.topbar-inner{max-width:1680px;margin:0 auto;padding:18px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
-.brand{display:flex;align-items:center;gap:11px;color:var(--ink-mute);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase;}
-.brand-mark{width:30px;height:30px;border-radius:9px;background:var(--ink);color:#fff;display:grid;place-items:center;}
+.topbar{position:sticky;top:0;z-index:30;backdrop-filter:saturate(1.4) blur(10px);background:rgba(247,249,251,.82);border-bottom:1px solid var(--line);}
+.topbar-inner{max-width:1680px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex:none;}
+.brand-mark{width:32px;height:32px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;flex:none;}
+.brand-name{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:-.015em;color:var(--ink);}
 .title-block{flex:1;min-width:240px;}
-.trip-title{
-  font-family:var(--font-display);font-weight:600;font-size:30px;letter-spacing:-.01em;
-  color:var(--ink);background:transparent;border:none;outline:none;width:100%;padding:2px 4px;
-  border-radius:8px;margin-left:-4px;
-}
+.trip-title{font-family:var(--font-display);font-weight:600;font-size:30px;letter-spacing:-.01em;color:var(--ink);background:transparent;border:none;outline:none;width:100%;padding:2px 4px;border-radius:8px;margin-left:-4px;}
 .trip-title:hover{background:rgba(30,42,56,.04);}
 .trip-title:focus{background:var(--surface);box-shadow:0 0 0 2px var(--primary-soft),0 0 0 3px var(--primary);}
 .trip-meta{display:flex;align-items:center;gap:8px;margin-top:4px;color:var(--ink-soft);font-size:13.5px;font-weight:500;flex-wrap:wrap;}
 .trip-meta .dot{width:3px;height:3px;border-radius:50%;background:var(--ink-mute);}
 .day-count{color:var(--primary-ink);font-weight:600;}
-
 .bar-actions{display:flex;align-items:center;gap:10px;}
 .save-pill{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;color:var(--ink-mute);padding:6px 4px;min-width:62px;}
 .save-pill.saved{color:var(--green);}
 .icon-btn{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;color:var(--ink-soft);border:1px solid var(--line);background:var(--surface);transition:.15s;}
 .icon-btn:hover{color:var(--ink);border-color:var(--ink-mute);transform:translateY(-1px);}
+.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 5px;border-radius:11px;border:1px solid var(--line);background:var(--surface);transition:.15s;font-size:13px;font-weight:600;color:var(--ink-soft);}
+.user-btn:hover{border-color:var(--ink-mute);color:var(--ink);}
+.user-avatar{width:30px;height:30px;border-radius:8px;object-fit:cover;}
+.user-initial{width:30px;height:30px;border-radius:8px;background:var(--primary-soft);color:var(--primary-ink);display:grid;place-items:center;font-size:12px;font-weight:700;font-family:var(--font-display);flex:none;}
 
 /* ---- trip switcher ---- */
 .switcher{position:relative;}
@@ -85,46 +100,30 @@ const STYLES = `
 /* ---- canvas ---- */
 .canvas{max-width:1680px;margin:0 auto;padding:30px 28px 100px;}
 
-/* day columns get a fixed minimum so they never resize based on typed
-   content (a bare 1fr track's "auto" minimum grows to fit unbreakable
-   text) - 210px comfortably fits a time (00:00), flight number (QF123)
-   and route (SRC > DST) on one line. Scrolls horizontally below that. */
+/* Fixed column widths — 1fr alone resolves to minmax(auto,1fr) which grows
+   with typed content. An explicit px floor stops that. */
 .cal-scroll{overflow-x:auto;padding-bottom:4px;}
 .weekday-head{display:grid;grid-template-columns:34px repeat(7,minmax(210px,1fr));gap:12px;margin-bottom:10px;}
 .weekday-head span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);padding-left:4px;}
-
 .cal-grid{display:grid;grid-template-columns:34px repeat(7,minmax(210px,1fr));gap:12px;}
 .week-row{display:contents;}
 .week-gutter{position:relative;}
-.remove-week-handle{
-  opacity:0;pointer-events:none;position:absolute;top:50%;left:0;transform:translateY(-50%);
-  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
-  color:var(--ink-mute);border:1px solid var(--line);background:var(--surface);transition:.15s;
-}
+.remove-week-handle{opacity:0;pointer-events:none;position:absolute;top:50%;left:0;transform:translateY(-50%);width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--ink-mute);border:1px solid var(--line);background:var(--surface);transition:.15s;}
 .week-row:hover .remove-week-handle{opacity:1;pointer-events:auto;}
 .remove-week-handle:hover{color:var(--primary-ink);border-color:var(--primary);background:var(--primary-soft);}
 .week-row:hover .remove-week-handle:disabled{opacity:.35;cursor:default;}
 .remove-week-handle:disabled:hover{color:var(--ink-mute);border-color:var(--line);background:var(--surface);}
-
 .add-week-row{display:flex;justify-content:center;margin-top:8px;}
 .add-week{display:flex;align-items:center;gap:7px;padding:11px 18px;border-radius:12px;border:1.5px dashed var(--line);color:var(--ink-soft);font-weight:600;font-size:13.5px;transition:.15s;}
 .add-week:hover{border-color:var(--primary);color:var(--primary-ink);background:var(--primary-soft);}
 
 /* ---- day card ---- */
 .cell{min-height:182px;}
-.cell.ghost{
-  width:100%;height:100%;min-height:182px;padding:13px 14px 13px 17px;border-radius:var(--radius);
-  display:flex;justify-content:flex-end;align-items:flex-start;text-align:left;transition:.16s ease;
-  background:var(--surface-2);border:1px dashed var(--line-soft);
-}
+.cell.ghost{width:100%;height:100%;min-height:182px;padding:13px 14px 13px 17px;border-radius:var(--radius);display:flex;justify-content:flex-end;align-items:flex-start;text-align:left;transition:.16s ease;background:var(--surface-2);border:1px dashed var(--line-soft);}
 .cell.ghost:hover{background:var(--primary-soft);border-color:var(--primary);}
 .cell.ghost .ghost-date{font-family:var(--font-display);font-weight:600;font-size:16px;line-height:1;color:var(--ink-mute);opacity:.6;transition:.16s;}
 .cell.ghost:hover .ghost-date{color:var(--primary-ink);opacity:1;}
-.daycard{
-  position:relative;height:100%;min-height:182px;background:var(--surface);
-  border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px 15px 19px;
-  text-align:left;width:100%;transition:.16s ease;overflow:hidden;display:flex;flex-direction:column;gap:9px;
-}
+.daycard{position:relative;height:100%;min-height:182px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px 15px 19px;text-align:left;width:100%;transition:.16s ease;overflow:hidden;display:flex;flex-direction:column;gap:9px;}
 .daycard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line);transition:.16s;}
 .daycard.filled::before{background:var(--primary);}
 .daycard:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift);border-color:transparent;}
@@ -155,11 +154,7 @@ const STYLES = `
 /* ---- drawer ---- */
 .scrim{position:fixed;inset:0;background:rgba(20,28,38,.34);z-index:50;animation:fade .18s ease;}
 @keyframes fade{from{opacity:0;}to{opacity:1;}}
-.drawer{
-  position:fixed;top:0;right:0;bottom:0;width:440px;max-width:92vw;background:var(--surface);
-  z-index:60;box-shadow:-12px 0 40px rgba(20,28,38,.16);display:flex;flex-direction:column;
-  animation:slide .24s cubic-bezier(.2,.8,.2,1);
-}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:440px;max-width:92vw;background:var(--surface);z-index:60;box-shadow:-12px 0 40px rgba(20,28,38,.16);display:flex;flex-direction:column;animation:slide .24s cubic-bezier(.2,.8,.2,1);}
 @keyframes slide{from{transform:translateX(100%);}to{transform:none;}}
 .drawer-head{padding:22px 24px 18px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:12px;}
 .dh-dow{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--primary-ink);}
@@ -173,12 +168,10 @@ const STYLES = `
 .inp::placeholder{color:var(--ink-mute);font-weight:400;}
 .inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);}
 textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
-
 .items-head{display:flex;align-items:center;justify-content:space-between;margin:6px 0 12px;}
 .items-head .field-label{margin:0;}
 .add-item{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--primary-ink);padding:6px 10px;border-radius:8px;background:var(--primary-soft);transition:.14s;}
 .add-item:hover{background:var(--primary);color:#fff;}
-
 .item-card{border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;background:var(--surface-2);position:relative;border-left:4px solid var(--grey);}
 .item-row1{display:flex;gap:8px;margin-bottom:8px;}
 .type-select{position:relative;flex:none;}
@@ -226,7 +219,7 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 .legend-item{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
 .legend-item .ldot{width:9px;height:9px;border-radius:3px;}
 
-/* ---- bottom panels (checklist + expenses) ---- */
+/* ---- bottom panels ---- */
 .bottom-panels{display:flex;gap:16px;margin-top:32px;align-items:flex-start;}
 .bottom-panels > *{flex:1;min-width:0;}
 
@@ -306,7 +299,7 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 `;
 
 /* ------------------------------------------------------------------ */
-/*  Item types                                                         */
+/*  Item types + expense categories                                    */
 /* ------------------------------------------------------------------ */
 const ITEM_TYPES = {
   flight:    { label: "Flight",    icon: Plane,          color: "var(--sky)",     soft: "var(--sky-soft)" },
@@ -317,6 +310,16 @@ const ITEM_TYPES = {
   other:     { label: "Other",     icon: MoreHorizontal, color: "var(--grey)",    soft: "var(--grey-soft)" },
 };
 const TYPE_KEYS = Object.keys(ITEM_TYPES);
+
+const EXPENSE_CATS = {
+  flight:    { label: "Flight",    color: "var(--sky)" },
+  stay:      { label: "Stay",      color: "var(--green)" },
+  food:      { label: "Food",      color: "var(--amber)" },
+  activity:  { label: "Activity",  color: "var(--primary)" },
+  transport: { label: "Transport", color: "var(--indigo)" },
+  other:     { label: "Other",     color: "var(--grey)" },
+};
+const EXPENSE_CAT_KEYS = Object.keys(EXPENSE_CATS);
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -329,47 +332,27 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const fmtShort = (iso) => { const d = parseISO(iso); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`; };
 const fmtMoney = (n) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const EXPENSE_CATS = {
-  flight:    { label: "Flight",    color: "var(--sky)" },
-  stay:      { label: "Stay",      color: "var(--green)" },
-  food:      { label: "Food",      color: "var(--amber)" },
-  activity:  { label: "Activity",  color: "var(--primary)" },
-  transport: { label: "Transport", color: "var(--indigo)" },
-  other:     { label: "Other",     color: "var(--grey)" },
-};
-const EXPENSE_CAT_KEYS = Object.keys(EXPENSE_CATS);
-
-// One continuous run of full Mon-Sun weeks covering the trip, padded with
-// out-of-trip "ghost" days at the very start/end so every row has 7 days.
-// Month changes are marked inline (see monthTag below) rather than by
-// splitting into separate per-month sections - that avoided full weeks
-// and caused the same date to appear twice near a month boundary.
 function buildCalendar(startISO, endISO) {
   if (!startISO || !endISO) return { weeks: [], total: 0 };
   let s = parseISO(startISO), e = parseISO(endISO);
   if (e < s) { const t = s; s = e; e = t; }
-
   const real = [];
   const cur = new Date(s);
   let idx = 1;
   while (cur <= e) { real.push({ iso: toISO(cur), dayNum: idx, date: new Date(cur), inTrip: true }); cur.setDate(cur.getDate() + 1); idx++; }
   const total = real.length;
-
   const leadGap = (real[0].date.getDay() + 6) % 7;
   const lead = [];
   for (let i = leadGap; i > 0; i--) {
     const gd = new Date(real[0].date); gd.setDate(gd.getDate() - i);
     lead.push({ iso: toISO(gd), dayNum: null, date: gd, inTrip: false });
   }
-
   const lastDow = (real[real.length - 1].date.getDay() + 6) % 7;
-  const trailGap = 6 - lastDow;
   const trail = [];
-  for (let i = 1; i <= trailGap; i++) {
+  for (let i = 1; i <= 6 - lastDow; i++) {
     const gd = new Date(real[real.length - 1].date); gd.setDate(gd.getDate() + i);
     trail.push({ iso: toISO(gd), dayNum: null, date: gd, inTrip: false });
   }
-
   const all = [...lead, ...real, ...trail];
   const weeks = [];
   for (let i = 0; i < all.length; i += 7) weeks.push(all.slice(i, i + 7));
@@ -381,39 +364,65 @@ function monthTag(cell, isFirstRealDay) {
   return `${MONTHS[cell.date.getMonth()].slice(0, 3)} '${String(cell.date.getFullYear()).slice(2)}`;
 }
 
-/* ---- storage (localStorage) ---- */
-async function sGet(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-async function sSet(key, val) {
-  try {
-    localStorage.setItem(key, JSON.stringify(val));
-    return true;
-  } catch { return false; }
-}
-async function sDel(key) {
-  try { localStorage.removeItem(key); } catch {}
-}
-const K_INDEX = "itin:index";
-const K_TRIP = (id) => `itin:trip:${id}`;
+/* ------------------------------------------------------------------ */
+/*  Firestore helpers                                                  */
+/* ------------------------------------------------------------------ */
+const userDocRef  = (u) => doc(db, "users", u);
+const tripDocRef  = (u, id) => doc(db, "users", u, "trips", id);
 
-/* ---- seed: real itinerary imported from the "Canada 27" Google Sheet ---- */
+async function fsGetIndex(u) {
+  const snap = await getDoc(userDocRef(u));
+  return snap.exists() ? snap.data() : null;
+}
+async function fsSetIndex(u, data) {
+  await setDoc(userDocRef(u), data, { merge: true });
+}
+async function fsGetTrip(u, id) {
+  const snap = await getDoc(tripDocRef(u, id));
+  return snap.exists() ? snap.data() : null;
+}
+async function fsSetTrip(u, id, data) {
+  await setDoc(tripDocRef(u, id), data);
+}
+async function fsDelTrip(u, id) {
+  await deleteDoc(tripDocRef(u, id));
+}
+
+/* ------------------------------------------------------------------ */
+/*  localStorage → Firestore one-time migration                       */
+/* ------------------------------------------------------------------ */
+async function migrateFromLocalStorage(u) {
+  try {
+    const raw = localStorage.getItem("itin:index");
+    if (!raw) return;
+    const idx = JSON.parse(raw);
+    if (!idx?.trips?.length) return;
+    const existing = await fsGetIndex(u);
+    if (existing?.trips?.length) return; // already done
+    await fsSetIndex(u, { trips: idx.trips, activeId: idx.activeId });
+    for (const t of idx.trips) {
+      const tripRaw = localStorage.getItem(`itin:trip:${t.id}`);
+      if (tripRaw) await fsSetTrip(u, t.id, JSON.parse(tripRaw));
+    }
+    localStorage.removeItem("itin:index");
+    idx.trips.forEach((t) => localStorage.removeItem(`itin:trip:${t.id}`));
+  } catch (e) {
+    console.error("Migration error:", e);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Seed trip                                                          */
+/* ------------------------------------------------------------------ */
 const LEGACY_SEED_FINGERPRINT = "2027-09-27|2027-10-08";
 
 function sampleTrip(id = uid()) {
   return {
     id, name: "Canada 27", startDate: "2026-10-29", endDate: "2026-11-18",
     days: {
-      "2026-10-29": { location: "Vancouver", accommodation: "", notes: "", items: [
-        { id: uid(), type: "flight", time: "", title: "BNE → YVR", detail: "" },
-      ]},
+      "2026-10-29": { location: "Vancouver", accommodation: "", notes: "", items: [{ id: uid(), type: "flight", time: "", title: "BNE → YVR", detail: "" }] },
       "2026-10-30": { location: "Vancouver", accommodation: "", notes: "", items: [] },
-      "2026-10-31": { location: "Whitehorse", accommodation: "", notes: "", items: [
-        { id: uid(), type: "flight", time: "", title: "YVR → YXY", detail: "" },
-      ]},
+      "2026-10-31": { location: "Whitehorse", accommodation: "", notes: "", items: [{ id: uid(), type: "flight", time: "", title: "YVR → YXY", detail: "" }] },
       "2026-11-01": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
       "2026-11-02": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
       "2026-11-03": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
@@ -421,19 +430,13 @@ function sampleTrip(id = uid()) {
       "2026-11-05": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
       "2026-11-06": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
       "2026-11-07": { location: "Whitehorse", accommodation: "", notes: "", items: [] },
-      "2026-11-08": { location: "Vancouver", accommodation: "", notes: "", items: [
-        { id: uid(), type: "flight", time: "", title: "YXY → YVR", detail: "" },
-      ]},
+      "2026-11-08": { location: "Vancouver", accommodation: "", notes: "", items: [{ id: uid(), type: "flight", time: "", title: "YXY → YVR", detail: "" }] },
       "2026-11-09": { location: "Vancouver", accommodation: "", notes: "", items: [] },
-      "2026-11-10": { location: "Manila", accommodation: "", notes: "", items: [
-        { id: uid(), type: "flight", time: "", title: "YVR → MNL", detail: "" },
-      ]},
+      "2026-11-10": { location: "Manila", accommodation: "", notes: "", items: [{ id: uid(), type: "flight", time: "", title: "YVR → MNL", detail: "" }] },
       "2026-11-11": { location: "Manila", accommodation: "", notes: "", items: [] },
       "2026-11-12": { location: "Manila", accommodation: "", notes: "", items: [] },
       "2026-11-13": { location: "Manila", accommodation: "", notes: "", items: [] },
-      "2026-11-14": { location: "", accommodation: "", notes: "", items: [
-        { id: uid(), type: "flight", time: "", title: "MNL → ???", detail: "" },
-      ]},
+      "2026-11-14": { location: "", accommodation: "", notes: "", items: [{ id: uid(), type: "flight", time: "", title: "MNL → ???", detail: "" }] },
       "2026-11-15": { location: "", accommodation: "", notes: "", items: [] },
       "2026-11-16": { location: "", accommodation: "", notes: "", items: [] },
       "2026-11-17": { location: "", accommodation: "", notes: "", items: [] },
@@ -445,6 +448,18 @@ function sampleTrip(id = uid()) {
 /* ================================================================== */
 /*  Small components                                                   */
 /* ================================================================== */
+
+function GoogleG() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.707 17.64 9.2z"/>
+      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+      <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
+      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
+    </svg>
+  );
+}
+
 function TypePicker({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -456,19 +471,15 @@ function TypePicker({ value, onChange }) {
   return (
     <div className="type-select" ref={ref}>
       <button className="type-pick" onClick={() => setOpen((o) => !o)} type="button">
-        <span className="tdot" style={{ background: t.color }} />
-        {t.label}
-        <ChevronDown size={14} />
+        <span className="tdot" style={{ background: t.color }} />{t.label}<ChevronDown size={14} />
       </button>
       {open && (
         <div className="type-menu">
           {TYPE_KEYS.map((k) => {
             const Icon = ITEM_TYPES[k].icon;
             return (
-              <button key={k} className="type-opt" type="button"
-                onClick={() => { onChange(k); setOpen(false); }}>
-                <Icon size={15} style={{ color: ITEM_TYPES[k].color }} />
-                {ITEM_TYPES[k].label}
+              <button key={k} className="type-opt" type="button" onClick={() => { onChange(k); setOpen(false); }}>
+                <Icon size={15} style={{ color: ITEM_TYPES[k].color }} />{ITEM_TYPES[k].label}
               </button>
             );
           })}
@@ -508,7 +519,6 @@ function DayDrawer({ iso, dayNum, data, onClose, onUpdate }) {
   const updateItem = (id, next) => patch({ items: day.items.map((it) => (it.id === id ? next : it)) });
   const addItem = () => patch({ items: [...day.items, { id: uid(), type: "activity", time: "", title: "", detail: "" }] });
   const delItem = (id) => patch({ items: day.items.filter((it) => it.id !== id) });
-
   return (
     <>
       <div className="scrim" onClick={onClose} />
@@ -532,23 +542,20 @@ function DayDrawer({ iso, dayNum, data, onClose, onUpdate }) {
             <input className="inp" value={day.accommodation} placeholder="Where you're staying"
               onChange={(e) => patch({ accommodation: e.target.value })} />
           </div>
-
           <div className="items-head">
             <label className="field-label"><Luggage size={14} /> Plans</label>
             <button className="add-item" onClick={addItem}><Plus size={15} /> Add</button>
           </div>
-          {day.items.length === 0 ? (
-            <div className="items-empty">Nothing planned yet. Add a flight, activity, or anything else.</div>
-          ) : (
-            day.items.map((it) => (
+          {day.items.length === 0
+            ? <div className="items-empty">Nothing planned yet. Add a flight, activity, or anything else.</div>
+            : day.items.map((it) => (
               <ItemCard key={it.id} item={it}
                 onChange={(next) => updateItem(it.id, next)}
                 onDelete={() => delItem(it.id)} />
             ))
-          )}
-
+          }
           <div className="field" style={{ marginTop: 20 }}>
-            <label className="field-label">Notes</label>
+            <label className="field-label"><StickyNote size={14} /> Notes</label>
             <textarea className="inp" value={day.notes} placeholder="Anything else to remember for the day"
               onChange={(e) => patch({ notes: e.target.value })} />
           </div>
@@ -575,10 +582,10 @@ function DayCard({ cellDay, data, isToday, tag, onOpen }) {
         {tag && <span className="dc-month-tag">{tag}</span>}
       </div>
       {data?.location
-        ? <div className="dc-loc"><MapPin size={13} /> <span className="ctitle">{data.location}</span></div>
-        : <div className="dc-loc placeholder"><MapPin size={13} /> Add location</div>}
+        ? <div className="dc-loc"><MapPin size={13} /><span className="ctitle">{data.location}</span></div>
+        : <div className="dc-loc placeholder"><MapPin size={13} />Add location</div>}
       {data?.accommodation && (
-        <div className="dc-accom"><BedDouble size={12} /> <span className="ctitle">{data.accommodation}</span></div>
+        <div className="dc-accom"><BedDouble size={12} /><span className="ctitle">{data.accommodation}</span></div>
       )}
       {shown.length > 0 && (
         <div className="dc-chips">
@@ -596,7 +603,7 @@ function DayCard({ cellDay, data, isToday, tag, onOpen }) {
         </div>
       )}
       {data?.notes && (
-        <div className="dc-notes"><StickyNote size={11} /> <span className="ctitle">{data.notes}</span></div>
+        <div className="dc-notes"><StickyNote size={11} /><span className="ctitle">{data.notes}</span></div>
       )}
       <span className="dc-add"><Plus size={14} /></span>
     </button>
@@ -605,8 +612,6 @@ function DayCard({ cellDay, data, isToday, tag, onOpen }) {
 
 function TodoSection({ todos = [], onChange }) {
   const [draft, setDraft] = useState("");
-  const inputRef = useRef(null);
-
   const add = () => {
     const text = draft.trim();
     if (!text) return;
@@ -615,9 +620,7 @@ function TodoSection({ todos = [], onChange }) {
   };
   const toggle = (id) => onChange(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
   const del = (id) => onChange(todos.filter((t) => t.id !== id));
-
   const pending = todos.filter((t) => !t.done).length;
-
   return (
     <div className="todo-section">
       <div className="todo-header">
@@ -628,20 +631,20 @@ function TodoSection({ todos = [], onChange }) {
         <div className="todo-list">
           {todos.map((t) => (
             <div key={t.id} className={`todo-item${t.done ? " done" : ""}`}>
-              <button className="todo-check" onClick={() => toggle(t.id)} title={t.done ? "Mark incomplete" : "Mark done"}>
+              <button className="todo-check" onClick={() => toggle(t.id)}>
                 {t.done && <Check size={11} />}
               </button>
               <span className="todo-text">{t.text}</span>
-              <button className="todo-del" onClick={() => del(t.id)} title="Remove"><X size={12} /></button>
+              <button className="todo-del" onClick={() => del(t.id)}><X size={12} /></button>
             </div>
           ))}
         </div>
       )}
       <div className="todo-add-row">
-        <input ref={inputRef} className="todo-inp" value={draft} placeholder="Add a task…"
+        <input className="todo-inp" value={draft} placeholder="Add a task…"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
-        <button className="todo-add-btn" onClick={add} title="Add task"><Plus size={14} /></button>
+        <button className="todo-add-btn" onClick={add}><Plus size={14} /></button>
       </div>
     </div>
   );
@@ -653,12 +656,10 @@ function ExpenseSection({ expenses = [], onChange }) {
   const [cat, setCat] = useState("other");
   const [catOpen, setCatOpen] = useState(false);
   const catRef = useRef(null);
-
   useEffect(() => {
     const h = (e) => { if (catRef.current && !catRef.current.contains(e.target)) setCatOpen(false); };
     document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h);
   }, []);
-
   const add = () => {
     const text = desc.trim();
     const amt = parseFloat(amount);
@@ -667,16 +668,13 @@ function ExpenseSection({ expenses = [], onChange }) {
     setDesc(""); setAmount("");
   };
   const del = (id) => onChange(expenses.filter((e) => e.id !== id));
-
   const total = expenses.reduce((s, e) => s + e.amount, 0);
-
   return (
     <div className="expense-section">
       <div className="expense-header">
         <span className="expense-header-title">Expenses</span>
         {expenses.length > 0 && <span className="expense-total-badge">{fmtMoney(total)}</span>}
       </div>
-
       {expenses.length > 0 && (
         <div className="expense-list">
           {expenses.map((e) => (
@@ -685,7 +683,7 @@ function ExpenseSection({ expenses = [], onChange }) {
               <span className="expense-desc">{e.desc}</span>
               <span className="expense-cat-label">{EXPENSE_CATS[e.cat]?.label}</span>
               <span className="expense-amt">{fmtMoney(e.amount)}</span>
-              <button className="expense-del" onClick={() => del(e.id)} title="Remove"><X size={12} /></button>
+              <button className="expense-del" onClick={() => del(e.id)}><X size={12} /></button>
             </div>
           ))}
           <div className="expense-divider" />
@@ -696,11 +694,9 @@ function ExpenseSection({ expenses = [], onChange }) {
           </div>
         </div>
       )}
-
       <div className="expense-add-row">
         <div className="expense-cat-pick" ref={catRef}>
-          <button className="expense-cat-btn" onClick={() => setCatOpen((o) => !o)}
-            title={EXPENSE_CATS[cat].label}>
+          <button className="expense-cat-btn" onClick={() => setCatOpen((o) => !o)} title={EXPENSE_CATS[cat].label}>
             <span className="expense-dot" style={{ background: EXPENSE_CATS[cat].color }} />
             <ChevronDown size={11} />
           </button>
@@ -724,7 +720,7 @@ function ExpenseSection({ expenses = [], onChange }) {
             placeholder="0.00" onChange={(e) => setAmount(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
         </div>
-        <button className="expense-add-btn" onClick={add} title="Add expense"><Plus size={14} /></button>
+        <button className="expense-add-btn" onClick={add}><Plus size={14} /></button>
       </div>
     </div>
   );
@@ -804,79 +800,114 @@ function NewTripModal({ onCreate, onClose, canCancel }) {
   );
 }
 
+function SignInScreen({ onSignIn, signingIn, error }) {
+  return (
+    <div className="itin-root">
+      <style>{STYLES}</style>
+      <div className="signin-screen">
+        <div className="signin-card">
+          <div className="signin-logo">
+            <Plane size={34} />
+          </div>
+          <h1 className="signin-brand">Wayfarer</h1>
+          <p className="signin-tagline">Your trips, beautifully planned.</p>
+          <button className="google-btn" onClick={onSignIn} disabled={signingIn}>
+            <GoogleG />
+            {signingIn ? "Signing in…" : "Sign in with Google"}
+          </button>
+          {error && <p className="signin-error">{error}</p>}
+          <p className="signin-caption">Your trips are private and sync across all your browsers and devices.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ================================================================== */
 /*  Root                                                               */
 /* ================================================================== */
 export default function App() {
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [index, setIndex] = useState({ trips: [], activeId: null });
-  const [trip, setTrip] = useState(null);          // active trip blob
-  const [openDay, setOpenDay] = useState(null);    // {iso, dayNum}
+  const [trip, setTrip] = useState(null);
+  const [openDay, setOpenDay] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showNew, setShowNew] = useState(false);
-  const [saveStatus, setSaveStatus] = useState("idle"); // idle|saving|saved
+  const [saveStatus, setSaveStatus] = useState("idle");
   const saveTimer = useRef(null);
   const menuRef = useRef(null);
 
-  /* initial load */
-  useEffect(() => {
-    (async () => {
-      let idx = await sGet(K_INDEX);
-      if (!idx || !idx.trips || idx.trips.length === 0) {
-        const t = sampleTrip();
-        idx = { trips: [{ id: t.id, name: t.name }], activeId: t.id };
-        await sSet(K_TRIP(t.id), t);
-        await sSet(K_INDEX, idx);
-        setIndex(idx); setTrip(t);
-      } else {
-        setIndex(idx);
-        const activeId = idx.activeId || idx.trips[0].id;
-        let t = await sGet(K_TRIP(activeId));
-        if (t && `${t.startDate}|${t.endDate}` === LEGACY_SEED_FINGERPRINT) {
-          t = sampleTrip(t.id);
-          await sSet(K_TRIP(t.id), t);
-          const fixedIdx = { ...idx, trips: idx.trips.map((x) => (x.id === t.id ? { ...x, name: t.name } : x)) };
-          setIndex(fixedIdx); await sSet(K_INDEX, fixedIdx);
-        }
-        setTrip(t);
+  const loadData = useCallback(async (u) => {
+    setLoading(true);
+    await migrateFromLocalStorage(u);
+    let idx = await fsGetIndex(u);
+    if (!idx || !idx.trips?.length) {
+      const t = sampleTrip();
+      idx = { trips: [{ id: t.id, name: t.name }], activeId: t.id };
+      await fsSetIndex(u, idx);
+      await fsSetTrip(u, t.id, t);
+      setIndex(idx); setTrip(t);
+    } else {
+      setIndex(idx);
+      const activeId = idx.activeId || idx.trips[0].id;
+      let t = await fsGetTrip(u, activeId);
+      if (t && `${t.startDate}|${t.endDate}` === LEGACY_SEED_FINGERPRINT) {
+        t = sampleTrip(t.id);
+        await fsSetTrip(u, t.id, t);
+        const fixedIdx = { ...idx, trips: idx.trips.map((x) => (x.id === t.id ? { ...x, name: t.name } : x)) };
+        setIndex(fixedIdx); await fsSetIndex(u, fixedIdx);
       }
-      setLoading(false);
-    })();
+      setTrip(t);
+    }
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        await loadData(u.uid);
+      } else {
+        setTrip(null);
+        setIndex({ trips: [], activeId: null });
+      }
+      setAuthLoading(false);
+    });
+  }, [loadData]);
 
   useEffect(() => {
     const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
     document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  /* debounced persist of active trip */
   const persistTrip = useCallback((t) => {
+    if (!user) return;
     setSaveStatus("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      await sSet(K_TRIP(t.id), t);
+      await fsSetTrip(user.uid, t.id, t);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 1600);
     }, 500);
-  }, []);
+  }, [user]);
 
   const updateTrip = (next) => { setTrip(next); persistTrip(next); };
 
   const addWeek = () => {
-    const e = parseISO(trip.endDate);
-    e.setDate(e.getDate() + 7);
+    const e = parseISO(trip.endDate); e.setDate(e.getDate() + 7);
     updateTrip({ ...trip, endDate: toISO(e) });
   };
-
   const removeWeek = () => {
     const s = parseISO(trip.startDate);
-    const e = parseISO(trip.endDate);
-    e.setDate(e.getDate() - 7);
+    const e = parseISO(trip.endDate); e.setDate(e.getDate() - 7);
     if (e < s) return;
     updateTrip({ ...trip, endDate: toISO(e) });
   };
-
   const openGhost = (cell) => {
     let next = trip;
     if (cell.iso < trip.startDate) next = { ...trip, startDate: cell.iso };
@@ -885,70 +916,79 @@ export default function App() {
     const dayNum = Math.round((parseISO(cell.iso) - parseISO(next.startDate)) / 86400000) + 1;
     setOpenDay({ iso: cell.iso, dayNum });
   };
-
+  const updateDay = (iso, dayData) => updateTrip({ ...trip, days: { ...trip.days, [iso]: dayData } });
   const updateTodos = (todos) => updateTrip({ ...trip, todos });
   const updateExpenses = (expenses) => updateTrip({ ...trip, expenses });
-
-  const updateDay = (iso, dayData) => {
-    const days = { ...trip.days, [iso]: dayData };
-    updateTrip({ ...trip, days });
-  };
 
   const updateName = (name) => {
     const next = { ...trip, name };
     setTrip(next); persistTrip(next);
     const idx = { ...index, trips: index.trips.map((x) => (x.id === trip.id ? { ...x, name } : x)) };
-    setIndex(idx); sSet(K_INDEX, idx);
+    setIndex(idx); fsSetIndex(user.uid, idx);
   };
-
   const switchTrip = async (id) => {
     setMenuOpen(false);
     if (id === trip?.id) return;
-    const t = await sGet(K_TRIP(id));
+    const t = await fsGetTrip(user.uid, id);
     setTrip(t);
-    const idx = { ...index, activeId: id }; setIndex(idx); sSet(K_INDEX, idx);
+    const idx = { ...index, activeId: id }; setIndex(idx); fsSetIndex(user.uid, idx);
   };
-
   const createTrip = async ({ name, startDate, endDate }) => {
     const t = { id: uid(), name, startDate, endDate, days: {} };
-    await sSet(K_TRIP(t.id), t);
+    await fsSetTrip(user.uid, t.id, t);
     const idx = { trips: [...index.trips, { id: t.id, name }], activeId: t.id };
-    setIndex(idx); await sSet(K_INDEX, idx);
+    setIndex(idx); await fsSetIndex(user.uid, idx);
     setTrip(t); setShowNew(false); setMenuOpen(false);
   };
-
   const saveSettings = ({ name, startDate, endDate }) => {
     const next = { ...trip, name, startDate, endDate };
     updateTrip(next);
     const idx = { ...index, trips: index.trips.map((x) => (x.id === trip.id ? { ...x, name } : x)) };
-    setIndex(idx); sSet(K_INDEX, idx);
+    setIndex(idx); fsSetIndex(user.uid, idx);
     setShowSettings(false);
   };
-
   const deleteTrip = async (id) => {
-    await sDel(K_TRIP(id));
+    await fsDelTrip(user.uid, id);
     const remaining = index.trips.filter((x) => x.id !== id);
     if (remaining.length === 0) {
       const idx = { trips: [], activeId: null };
-      setIndex(idx); await sSet(K_INDEX, idx);
+      setIndex(idx); await fsSetIndex(user.uid, idx);
       setTrip(null); setShowSettings(false); setShowNew(true);
       return;
     }
     const nextActive = remaining[0].id;
     const idx = { trips: remaining, activeId: nextActive };
-    setIndex(idx); await sSet(K_INDEX, idx);
-    const t = await sGet(K_TRIP(nextActive));
+    setIndex(idx); await fsSetIndex(user.uid, idx);
+    const t = await fsGetTrip(user.uid, nextActive);
     setTrip(t); setShowSettings(false); setMenuOpen(false);
   };
 
-  if (loading) {
+  const handleSignIn = async () => {
+    setSigningIn(true); setSignInError(null);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch {
+      setSignInError("Sign-in failed — please try again.");
+      setSigningIn(false);
+    }
+  };
+
+  /* ---- loading / auth states ---- */
+  if (authLoading || (user && loading)) {
     return (
-      <div className="itin-root" style={{ display: "grid", placeItems: "center" }}>
+      <div className="itin-root">
         <style>{STYLES}</style>
-        <div style={{ color: "var(--ink-mute)", fontWeight: 600 }}>Loading your trips…</div>
+        <div className="loading-screen">
+          <div className="loading-inner">
+            <div className="loading-logo"><Plane size={28} /></div>
+            <div className="loading-text">{authLoading ? "Checking in…" : "Loading your trips…"}</div>
+          </div>
+        </div>
       </div>
     );
   }
+
+  if (!user) return <SignInScreen onSignIn={handleSignIn} signingIn={signingIn} error={signInError} />;
 
   if (!trip) {
     return (
@@ -957,8 +997,10 @@ export default function App() {
         <div className="empty-state">
           <div className="es-mark"><CalendarDays size={30} /></div>
           <h1>Plan your first trip</h1>
-          <p>Lay your itinerary out on a calendar — locations, where you're staying, flights and everything in between, day by day.</p>
-          <button className="btn btn-primary" onClick={() => setShowNew(true)}><Plus size={16} style={{ marginRight: 6, verticalAlign: "-2px" }} />New trip</button>
+          <p>Lay your itinerary out on a calendar — locations, flights, accommodation and everything in between, day by day.</p>
+          <button className="btn btn-primary" onClick={() => setShowNew(true)}>
+            <Plus size={16} style={{ marginRight: 6, verticalAlign: "-2px" }} />New trip
+          </button>
         </div>
         {showNew && <NewTripModal canCancel={false} onCreate={createTrip} onClose={() => setShowNew(false)} />}
       </div>
@@ -977,9 +1019,10 @@ export default function App() {
       <div className="topbar">
         <div className="topbar-inner">
           <div className="brand">
-            <span className="brand-mark"><Plane size={16} /></span>
-            Itinerary
+            <span className="brand-mark"><Plane size={17} /></span>
+            <span className="brand-name">Wayfarer</span>
           </div>
+
           <div className="title-block">
             <input className="trip-title" value={trip.name}
               onChange={(e) => updateName(e.target.value)} aria-label="Trip name" />
@@ -995,6 +1038,7 @@ export default function App() {
               {saveStatus === "saving" && <>Saving…</>}
               {saveStatus === "saved" && <><Check size={14} /> Saved</>}
             </span>
+
             <div className="switcher" ref={menuRef}>
               <button className="switcher-btn" onClick={() => setMenuOpen((o) => !o)}>
                 Trips <ChevronDown size={15} />
@@ -1019,7 +1063,18 @@ export default function App() {
                 </div>
               )}
             </div>
-            <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Trip settings"><Settings size={18} /></button>
+
+            <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Trip settings">
+              <Settings size={18} />
+            </button>
+
+            <button className="user-btn" onClick={() => signOut(auth)} title="Sign out">
+              {user.photoURL
+                ? <img className="user-avatar" src={user.photoURL} alt="" referrerPolicy="no-referrer" />
+                : <div className="user-initial">{(user.displayName || user.email || "U")[0].toUpperCase()}</div>
+              }
+              <LogOut size={14} />
+            </button>
           </div>
         </div>
       </div>
