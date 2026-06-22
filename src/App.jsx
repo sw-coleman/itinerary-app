@@ -3,7 +3,7 @@ import {
   MapPin, BedDouble, Plane, Car, Utensils, Ticket, Plus, Minus, X, Settings,
   ChevronDown, Trash2, Check, MoreHorizontal, Luggage, CalendarDays, StickyNote, LogOut,
 } from "lucide-react";
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "./firebase";
 
@@ -868,6 +868,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // Handle the result of a redirect sign-in (fires on page load after returning from Google)
+    getRedirectResult(auth).catch((err) => {
+      if (err?.code !== "auth/no-auth-event") {
+        setSignInError("Sign-in failed — please try again.");
+        setSigningIn(false);
+      }
+    });
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -966,7 +973,8 @@ export default function App() {
   const handleSignIn = async () => {
     setSigningIn(true); setSignInError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
+      // page navigates away — no code runs after this
     } catch {
       setSignInError("Sign-in failed — please try again.");
       setSigningIn(false);
