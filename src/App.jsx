@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   MapPin, BedDouble, Plane, Car, Utensils, Ticket, Plus, Minus, X, Settings,
-  ChevronDown, Trash2, Check, MoreHorizontal, Luggage, CalendarDays, StickyNote, LogOut,
+  ChevronDown, Trash2, Check, MoreHorizontal, Luggage, CalendarDays, StickyNote,
+  Download, Copy, Link,
 } from "lucide-react";
-import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from "firebase/auth";
-import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
-import { auth, db, googleProvider } from "./firebase";
+import { doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
 
 /* ------------------------------------------------------------------ */
 /*  Design tokens + global CSS                                         */
@@ -40,28 +40,10 @@ const STYLES = `
 .itin-root button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
 .itin-root input,.itin-root textarea,.itin-root select{font-family:inherit;color:var(--ink);}
 
-/* ---- sign-in screen ---- */
-.signin-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-.signin-card{background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow-lift);padding:56px 48px 48px;max-width:420px;width:100%;text-align:center;}
-.signin-logo{width:72px;height:72px;border-radius:24px;background:var(--ink);color:#fff;display:grid;place-items:center;margin:0 auto 22px;box-shadow:0 8px 24px rgba(30,42,56,.18);}
-.signin-brand{font-family:var(--font-display);font-weight:700;font-size:40px;letter-spacing:-.025em;color:var(--ink);margin:0 0 8px;}
-.signin-tagline{color:var(--ink-soft);font-size:15.5px;font-weight:500;margin:0 0 40px;line-height:1.5;}
-.google-btn{display:flex;align-items:center;gap:12px;width:100%;padding:15px 22px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);font-weight:600;font-size:15px;justify-content:center;transition:.15s;color:var(--ink);}
-.google-btn:hover:not(:disabled){border-color:var(--ink-mute);background:var(--surface-2);transform:translateY(-1px);box-shadow:var(--shadow);}
-.google-btn:disabled{opacity:.6;cursor:default;}
-.signin-error{color:var(--primary-ink);font-size:13px;margin-top:14px;font-weight:500;}
-.signin-caption{margin-top:20px;font-size:12.5px;color:var(--ink-mute);line-height:1.55;}
-
-/* ---- loading screen ---- */
-.loading-screen{min-height:100vh;display:grid;place-items:center;}
-.loading-inner{text-align:center;}
-.loading-logo{width:60px;height:60px;border-radius:20px;background:var(--ink);color:#fff;display:grid;place-items:center;margin:0 auto 18px;opacity:.85;}
-.loading-text{color:var(--ink-mute);font-weight:600;font-size:14.5px;}
-
 /* ---- top bar ---- */
 .topbar{position:sticky;top:0;z-index:30;backdrop-filter:saturate(1.4) blur(10px);background:rgba(247,249,251,.82);border-bottom:1px solid var(--line);}
 .topbar-inner{max-width:1680px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex:none;}
+.brand{display:flex;align-items:center;gap:10px;flex:none;}
 .brand-mark{width:32px;height:32px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;flex:none;}
 .brand-name{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:-.015em;color:var(--ink);}
 .title-block{flex:1;min-width:240px;}
@@ -76,10 +58,6 @@ const STYLES = `
 .save-pill.saved{color:var(--green);}
 .icon-btn{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;color:var(--ink-soft);border:1px solid var(--line);background:var(--surface);transition:.15s;}
 .icon-btn:hover{color:var(--ink);border-color:var(--ink-mute);transform:translateY(-1px);}
-.user-btn{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 5px;border-radius:11px;border:1px solid var(--line);background:var(--surface);transition:.15s;font-size:13px;font-weight:600;color:var(--ink-soft);}
-.user-btn:hover{border-color:var(--ink-mute);color:var(--ink);}
-.user-avatar{width:30px;height:30px;border-radius:8px;object-fit:cover;}
-.user-initial{width:30px;height:30px;border-radius:8px;background:var(--primary-soft);color:var(--primary-ink);display:grid;place-items:center;font-size:12px;font-weight:700;font-family:var(--font-display);flex:none;}
 
 /* ---- trip switcher ---- */
 .switcher{position:relative;}
@@ -100,8 +78,6 @@ const STYLES = `
 /* ---- canvas ---- */
 .canvas{max-width:1680px;margin:0 auto;padding:30px 28px 100px;}
 
-/* Fixed column widths — 1fr alone resolves to minmax(auto,1fr) which grows
-   with typed content. An explicit px floor stops that. */
 .cal-scroll{overflow-x:auto;padding-bottom:4px;}
 .weekday-head{display:grid;grid-template-columns:34px repeat(7,minmax(210px,1fr));gap:12px;margin-bottom:10px;}
 .weekday-head span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);padding-left:4px;}
@@ -196,7 +172,7 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 
 /* ---- modal ---- */
 .modal{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px;background:rgba(20,28,38,.34);animation:fade .16s ease;}
-.modal-card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow-lift);width:420px;max-width:100%;padding:26px;animation:pop .18s ease;}
+.modal-card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow-lift);width:460px;max-width:100%;padding:26px;animation:pop .18s ease;}
 .modal-card h2{font-family:var(--font-display);font-weight:600;font-size:21px;margin:0 0 18px;}
 .modal-row{display:flex;gap:12px;}
 .btn{padding:11px 16px;border-radius:11px;font-size:14px;font-weight:600;transition:.14s;}
@@ -207,6 +183,21 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.5;}
 .btn-danger{color:var(--primary-ink);}
 .btn-danger:hover{background:var(--primary-soft);}
 .modal-foot{display:flex;justify-content:space-between;align-items:center;margin-top:22px;}
+
+/* ---- sync section inside settings ---- */
+.sync-section{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);}
+.sync-label{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.sync-code-row{display:flex;gap:8px;align-items:center;}
+.sync-code{flex:1;font-family:var(--font-mono);font-size:13px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--surface-2);color:var(--ink-soft);outline:none;}
+.sync-code:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);background:var(--surface);color:var(--ink);}
+.sync-copy{display:flex;align-items:center;gap:5px;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:600;color:var(--ink-soft);transition:.14s;white-space:nowrap;}
+.sync-copy:hover{border-color:var(--primary);color:var(--primary-ink);background:var(--primary-soft);}
+.sync-apply{padding:9px 12px;border-radius:9px;background:var(--primary);font-size:13px;font-weight:600;color:#fff;border:none;transition:.14s;white-space:nowrap;}
+.sync-apply:hover{background:var(--primary-ink);}
+.sync-hint{font-size:12px;color:var(--ink-mute);margin-top:8px;line-height:1.5;}
+.transfer-row{display:flex;gap:8px;margin-top:12px;}
+.transfer-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--line);font-size:13px;font-weight:600;color:var(--ink-soft);transition:.14s;}
+.transfer-btn:hover{border-color:var(--ink-mute);color:var(--ink);background:var(--surface-2);}
 
 /* ---- empty state ---- */
 .empty-state{max-width:480px;margin:90px auto;text-align:center;}
@@ -347,9 +338,8 @@ function buildCalendar(startISO, endISO) {
     const gd = new Date(real[0].date); gd.setDate(gd.getDate() - i);
     lead.push({ iso: toISO(gd), dayNum: null, date: gd, inTrip: false });
   }
-  const lastDow = (real[real.length - 1].date.getDay() + 6) % 7;
   const trail = [];
-  for (let i = 1; i <= 6 - lastDow; i++) {
+  for (let i = 1; i <= 6 - (real[real.length - 1].date.getDay() + 6) % 7; i++) {
     const gd = new Date(real[real.length - 1].date); gd.setDate(gd.getDate() + i);
     trail.push({ iso: toISO(gd), dayNum: null, date: gd, inTrip: false });
   }
@@ -365,57 +355,53 @@ function monthTag(cell, isFirstRealDay) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Firestore helpers                                                  */
+/*  Sync-key — random ID stored in localStorage, keys Firestore data  */
 /* ------------------------------------------------------------------ */
-const userDocRef  = (u) => doc(db, "users", u);
-const tripDocRef  = (u, id) => doc(db, "users", u, "trips", id);
+const SYNC_KEY_LS = "wayfarer:syncKey";
 
-async function fsGetIndex(u) {
-  const snap = await getDoc(userDocRef(u));
-  return snap.exists() ? snap.data() : null;
-}
-async function fsSetIndex(u, data) {
-  await setDoc(userDocRef(u), data, { merge: true });
-}
-async function fsGetTrip(u, id) {
-  const snap = await getDoc(tripDocRef(u, id));
-  return snap.exists() ? snap.data() : null;
-}
-async function fsSetTrip(u, id, data) {
-  await setDoc(tripDocRef(u, id), data);
-}
-async function fsDelTrip(u, id) {
-  await deleteDoc(tripDocRef(u, id));
+function getOrCreateSyncKey() {
+  let k = localStorage.getItem(SYNC_KEY_LS);
+  if (!k) { k = uid() + uid() + uid(); localStorage.setItem(SYNC_KEY_LS, k); }
+  return k;
 }
 
 /* ------------------------------------------------------------------ */
-/*  localStorage → Firestore one-time migration                       */
+/*  Firestore helpers (no auth — keyed by sync code)                  */
 /* ------------------------------------------------------------------ */
-async function migrateFromLocalStorage(u) {
-  try {
-    const raw = localStorage.getItem("itin:index");
-    if (!raw) return;
-    const idx = JSON.parse(raw);
-    if (!idx?.trips?.length) return;
-    const existing = await fsGetIndex(u);
-    if (existing?.trips?.length) return; // already done
-    await fsSetIndex(u, { trips: idx.trips, activeId: idx.activeId });
-    for (const t of idx.trips) {
-      const tripRaw = localStorage.getItem(`itin:trip:${t.id}`);
-      if (tripRaw) await fsSetTrip(u, t.id, JSON.parse(tripRaw));
-    }
-    localStorage.removeItem("itin:index");
-    idx.trips.forEach((t) => localStorage.removeItem(`itin:trip:${t.id}`));
-  } catch (e) {
-    console.error("Migration error:", e);
-  }
+const fsIndexDoc = (k) => doc(db, "data", k);
+const fsTripDoc  = (k, id) => doc(db, "data", k, "trips", id);
+
+async function fsGetIndex(k) {
+  const snap = await getDoc(fsIndexDoc(k)); return snap.exists() ? snap.data() : null;
+}
+async function fsSetIndex(k, data) { await setDoc(fsIndexDoc(k), data, { merge: true }); }
+async function fsGetTrip(k, id) {
+  const snap = await getDoc(fsTripDoc(k, id)); return snap.exists() ? snap.data() : null;
+}
+async function fsSetTrip(k, id, data) { await setDoc(fsTripDoc(k, id), data); }
+async function fsDelTrip(k, id) { await deleteDoc(fsTripDoc(k, id)); }
+async function fsAllTrips(k) {
+  const snap = await getDocs(collection(db, "data", k, "trips"));
+  return snap.docs.map((d) => d.data());
+}
+
+/* ------------------------------------------------------------------ */
+/*  JSON export                                                        */
+/* ------------------------------------------------------------------ */
+function exportJSON(index, allTrips) {
+  const data = { _v: 2, index, trips: allTrips };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `wayfarer-backup-${toISO(new Date())}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /* ------------------------------------------------------------------ */
 /*  Seed trip                                                          */
 /* ------------------------------------------------------------------ */
-const LEGACY_SEED_FINGERPRINT = "2027-09-27|2027-10-08";
-
 function sampleTrip(id = uid()) {
   return {
     id, name: "Canada 27", startDate: "2026-10-29", endDate: "2026-11-18",
@@ -448,18 +434,6 @@ function sampleTrip(id = uid()) {
 /* ================================================================== */
 /*  Small components                                                   */
 /* ================================================================== */
-
-function GoogleG() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.707 17.64 9.2z"/>
-      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-      <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
-      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
-    </svg>
-  );
-}
-
 function TypePicker({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -726,10 +700,21 @@ function ExpenseSection({ expenses = [], onChange }) {
   );
 }
 
-function SettingsModal({ trip, onSave, onDelete, onClose }) {
+function SettingsModal({ syncKey, trip, index, onSave, onDelete, onClose, onSyncKeyChange, onExport }) {
   const [name, setName] = useState(trip.name);
   const [start, setStart] = useState(trip.startDate);
   const [end, setEnd] = useState(trip.endDate);
+  const [keyDraft, setKeyDraft] = useState(syncKey);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(syncKey).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); });
+  };
+  const handleApply = () => {
+    const k = keyDraft.trim();
+    if (k && k !== syncKey) { onSyncKeyChange(k); onClose(); }
+  };
+
   return (
     <div className="modal" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -748,6 +733,27 @@ function SettingsModal({ trip, onSave, onDelete, onClose }) {
             <input className="inp" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
         </div>
+
+        <div className="sync-section">
+          <div className="sync-label"><Link size={12} /> Sync across browsers &amp; devices</div>
+          <div className="sync-code-row">
+            <input className="sync-code" value={keyDraft} onChange={(e) => setKeyDraft(e.target.value)}
+              placeholder="Paste a sync code from another device" />
+            <button className="sync-copy" onClick={handleCopy}>
+              {copied ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
+            </button>
+            {keyDraft.trim() !== syncKey && keyDraft.trim() && (
+              <button className="sync-apply" onClick={handleApply}>Apply</button>
+            )}
+          </div>
+          <div className="sync-hint">
+            Open Settings on any other browser or device, paste this code, and hit Apply — your data will load instantly. No login needed.
+          </div>
+          <div className="transfer-row">
+            <button className="transfer-btn" onClick={onExport}><Download size={13} /> Export JSON backup</button>
+          </div>
+        </div>
+
         <div className="modal-foot">
           <button className="btn btn-danger" onClick={onDelete}>Delete trip</button>
           <div style={{ display: "flex", gap: 8 }}>
@@ -800,38 +806,12 @@ function NewTripModal({ onCreate, onClose, canCancel }) {
   );
 }
 
-function SignInScreen({ onSignIn, signingIn, error }) {
-  return (
-    <div className="itin-root">
-      <style>{STYLES}</style>
-      <div className="signin-screen">
-        <div className="signin-card">
-          <div className="signin-logo">
-            <Plane size={34} />
-          </div>
-          <h1 className="signin-brand">Wayfarer</h1>
-          <p className="signin-tagline">Your trips, beautifully planned.</p>
-          <button className="google-btn" onClick={onSignIn} disabled={signingIn}>
-            <GoogleG />
-            {signingIn ? "Signing in…" : "Sign in with Google"}
-          </button>
-          {error && <p className="signin-error">{error}</p>}
-          <p className="signin-caption">Your trips are private and sync across all your browsers and devices.</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ================================================================== */
 /*  Root                                                               */
 /* ================================================================== */
 export default function App() {
-  const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [signingIn, setSigningIn] = useState(false);
-  const [signInError, setSignInError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [syncKey, setSyncKey] = useState(() => getOrCreateSyncKey());
   const [index, setIndex] = useState({ trips: [], activeId: null });
   const [trip, setTrip] = useState(null);
   const [openDay, setOpenDay] = useState(null);
@@ -842,68 +822,41 @@ export default function App() {
   const saveTimer = useRef(null);
   const menuRef = useRef(null);
 
-  const loadData = useCallback(async (u) => {
+  const loadData = useCallback(async (key) => {
     setLoading(true);
-    await migrateFromLocalStorage(u);
-    let idx = await fsGetIndex(u);
+    let idx = await fsGetIndex(key);
     if (!idx || !idx.trips?.length) {
       const t = sampleTrip();
       idx = { trips: [{ id: t.id, name: t.name }], activeId: t.id };
-      await fsSetIndex(u, idx);
-      await fsSetTrip(u, t.id, t);
+      await fsSetTrip(key, t.id, t); await fsSetIndex(key, idx);
       setIndex(idx); setTrip(t);
     } else {
       setIndex(idx);
       const activeId = idx.activeId || idx.trips[0].id;
-      let t = await fsGetTrip(u, activeId);
-      if (t && `${t.startDate}|${t.endDate}` === LEGACY_SEED_FINGERPRINT) {
-        t = sampleTrip(t.id);
-        await fsSetTrip(u, t.id, t);
-        const fixedIdx = { ...idx, trips: idx.trips.map((x) => (x.id === t.id ? { ...x, name: t.name } : x)) };
-        setIndex(fixedIdx); await fsSetIndex(u, fixedIdx);
-      }
-      setTrip(t);
+      const t = await fsGetTrip(key, activeId);
+      setTrip(t || null);
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    // Handle the result of a redirect sign-in (fires on page load after returning from Google)
-    getRedirectResult(auth).catch((err) => {
-      if (err?.code !== "auth/no-auth-event") {
-        setSignInError("Sign-in failed — please try again.");
-        setSigningIn(false);
-      }
-    });
-    return onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        await loadData(u.uid);
-      } else {
-        setTrip(null);
-        setIndex({ trips: [], activeId: null });
-      }
-      setAuthLoading(false);
-    });
-  }, [loadData]);
+  useEffect(() => { loadData(syncKey); }, [loadData, syncKey]);
 
   useEffect(() => {
     const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
     document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const persistTrip = useCallback((t) => {
-    if (!user) return;
+  const persistTrip = useCallback((key, t) => {
     setSaveStatus("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      await fsSetTrip(user.uid, t.id, t);
+      await fsSetTrip(key, t.id, t);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 1600);
     }, 500);
-  }, [user]);
+  }, []);
 
-  const updateTrip = (next) => { setTrip(next); persistTrip(next); };
+  const updateTrip = (next) => { setTrip(next); persistTrip(syncKey, next); };
 
   const addWeek = () => {
     const e = parseISO(trip.endDate); e.setDate(e.getDate() + 7);
@@ -929,74 +882,64 @@ export default function App() {
 
   const updateName = (name) => {
     const next = { ...trip, name };
-    setTrip(next); persistTrip(next);
+    setTrip(next); persistTrip(syncKey, next);
     const idx = { ...index, trips: index.trips.map((x) => (x.id === trip.id ? { ...x, name } : x)) };
-    setIndex(idx); fsSetIndex(user.uid, idx);
+    setIndex(idx); fsSetIndex(syncKey, idx);
   };
   const switchTrip = async (id) => {
     setMenuOpen(false);
     if (id === trip?.id) return;
-    const t = await fsGetTrip(user.uid, id);
+    const t = await fsGetTrip(syncKey, id);
     setTrip(t);
-    const idx = { ...index, activeId: id }; setIndex(idx); fsSetIndex(user.uid, idx);
+    const idx = { ...index, activeId: id }; setIndex(idx); fsSetIndex(syncKey, idx);
   };
   const createTrip = async ({ name, startDate, endDate }) => {
     const t = { id: uid(), name, startDate, endDate, days: {} };
-    await fsSetTrip(user.uid, t.id, t);
+    await fsSetTrip(syncKey, t.id, t);
     const idx = { trips: [...index.trips, { id: t.id, name }], activeId: t.id };
-    setIndex(idx); await fsSetIndex(user.uid, idx);
+    setIndex(idx); await fsSetIndex(syncKey, idx);
     setTrip(t); setShowNew(false); setMenuOpen(false);
   };
   const saveSettings = ({ name, startDate, endDate }) => {
     const next = { ...trip, name, startDate, endDate };
     updateTrip(next);
     const idx = { ...index, trips: index.trips.map((x) => (x.id === trip.id ? { ...x, name } : x)) };
-    setIndex(idx); fsSetIndex(user.uid, idx);
+    setIndex(idx); fsSetIndex(syncKey, idx);
     setShowSettings(false);
   };
   const deleteTrip = async (id) => {
-    await fsDelTrip(user.uid, id);
+    await fsDelTrip(syncKey, id);
     const remaining = index.trips.filter((x) => x.id !== id);
     if (remaining.length === 0) {
       const idx = { trips: [], activeId: null };
-      setIndex(idx); await fsSetIndex(user.uid, idx);
-      setTrip(null); setShowSettings(false); setShowNew(true);
-      return;
+      setIndex(idx); await fsSetIndex(syncKey, idx);
+      setTrip(null); setShowSettings(false); setShowNew(true); return;
     }
     const nextActive = remaining[0].id;
     const idx = { trips: remaining, activeId: nextActive };
-    setIndex(idx); await fsSetIndex(user.uid, idx);
-    const t = await fsGetTrip(user.uid, nextActive);
+    setIndex(idx); await fsSetIndex(syncKey, idx);
+    const t = await fsGetTrip(syncKey, nextActive);
     setTrip(t); setShowSettings(false); setMenuOpen(false);
   };
 
-  const handleSignIn = async () => {
-    setSigningIn(true); setSignInError(null);
-    try {
-      await signInWithRedirect(auth, googleProvider);
-      // page navigates away — no code runs after this
-    } catch {
-      setSignInError("Sign-in failed — please try again.");
-      setSigningIn(false);
-    }
+  const handleSyncKeyChange = (key) => {
+    localStorage.setItem(SYNC_KEY_LS, key);
+    setSyncKey(key);
   };
 
-  /* ---- loading / auth states ---- */
-  if (authLoading || (user && loading)) {
+  const handleExport = async () => {
+    const trips = await fsAllTrips(syncKey);
+    exportJSON(index, trips);
+  };
+
+  if (loading) {
     return (
-      <div className="itin-root">
+      <div className="itin-root" style={{ display: "grid", placeItems: "center", minHeight: "100vh" }}>
         <style>{STYLES}</style>
-        <div className="loading-screen">
-          <div className="loading-inner">
-            <div className="loading-logo"><Plane size={28} /></div>
-            <div className="loading-text">{authLoading ? "Checking in…" : "Loading your trips…"}</div>
-          </div>
-        </div>
+        <div style={{ color: "var(--ink-mute)", fontWeight: 600 }}>Loading…</div>
       </div>
     );
   }
-
-  if (!user) return <SignInScreen onSignIn={handleSignIn} signingIn={signingIn} error={signInError} />;
 
   if (!trip) {
     return (
@@ -1023,7 +966,6 @@ export default function App() {
     <div className="itin-root">
       <style>{STYLES}</style>
 
-      {/* top bar */}
       <div className="topbar">
         <div className="topbar-inner">
           <div className="brand">
@@ -1046,7 +988,6 @@ export default function App() {
               {saveStatus === "saving" && <>Saving…</>}
               {saveStatus === "saved" && <><Check size={14} /> Saved</>}
             </span>
-
             <div className="switcher" ref={menuRef}>
               <button className="switcher-btn" onClick={() => setMenuOpen((o) => !o)}>
                 Trips <ChevronDown size={15} />
@@ -1071,23 +1012,13 @@ export default function App() {
                 </div>
               )}
             </div>
-
             <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Trip settings">
               <Settings size={18} />
-            </button>
-
-            <button className="user-btn" onClick={() => signOut(auth)} title="Sign out">
-              {user.photoURL
-                ? <img className="user-avatar" src={user.photoURL} alt="" referrerPolicy="no-referrer" />
-                : <div className="user-initial">{(user.displayName || user.email || "U")[0].toUpperCase()}</div>
-              }
-              <LogOut size={14} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* canvas */}
       <div className="canvas">
         <div className="legend">
           {TYPE_KEYS.map((k) => (
@@ -1151,8 +1082,11 @@ export default function App() {
           data={trip.days[openDay.iso]} onClose={() => setOpenDay(null)} onUpdate={updateDay} />
       )}
       {showSettings && (
-        <SettingsModal trip={trip} onSave={saveSettings}
-          onDelete={() => deleteTrip(trip.id)} onClose={() => setShowSettings(false)} />
+        <SettingsModal syncKey={syncKey} trip={trip} index={index}
+          onSave={saveSettings} onDelete={() => deleteTrip(trip.id)}
+          onClose={() => setShowSettings(false)}
+          onSyncKeyChange={handleSyncKeyChange}
+          onExport={handleExport} />
       )}
       {showNew && <NewTripModal canCancel onCreate={createTrip} onClose={() => setShowNew(false)} />}
     </div>
